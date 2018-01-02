@@ -11,3 +11,6 @@
 README.html
 docs/*
 *.dump
+cmake-build-debug/
+.idea/
+CMakeLists.txt
