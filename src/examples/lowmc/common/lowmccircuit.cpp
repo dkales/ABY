@@ -219,7 +219,7 @@ void FourRussiansMatrixMult(vector<uint32_t>& state, uint32_t lowmcstatesize, Bo
 
 		for (j = 0; j < lowmcstatesize; j++, bitctr += wsize) {
 			m_vRandomBits.GetBits((BYTE*) &tmp, bitctr, wsize);
-			tmpstate[i] = circ->PutXORGate(tmpstate[j], lut[tmp]);
+			tmpstate[j] = circ->PutXORGate(tmpstate[j], lut[tmp]);
 		}
 	}
 
