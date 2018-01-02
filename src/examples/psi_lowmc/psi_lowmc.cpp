@@ -29,6 +29,9 @@
 #include <sstream>
 #include <iomanip>
 
+//#define HASH_SIZE AES_BYTES
+#define HASH_SIZE SHA256_OUT_BYTES
+
 
 int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, uint32_t* bitlen,
 		uint32_t* secparam, string* address, uint16_t* port, e_sharing* sharing, bool* verbose, uint32_t* nthreads,
@@ -86,17 +89,17 @@ int main(int argc, char** argv) {
 	seclvl seclvl = get_sec_lvl(secparam);
 
     if(role == SERVER) {
-        constexpr size_t DB_SIZE = 2;//1024 * 32;
-        uint8_t enc_db[DB_SIZE*SHA256_OUT_BYTES];
-        uint8_t tmp[SHA256_OUT_BYTES];
+        constexpr size_t DB_SIZE = 1024 * 64;
+        uint8_t enc_db[DB_SIZE*HASH_SIZE];
+        uint8_t tmp[HASH_SIZE];
         //build db
         LowMC lowmc(0x1); //key is 1 for our testcase
         //extract the keys for the circuit
         {
-            constexpr uint32_t exp_key_bytes = ltp.blocksize /8 * (ltp.nrounds+1);
+            constexpr uint32_t exp_key_bytes = lowmcparam.blocksize /8 * (lowmcparam.nrounds+1);
             uint8_t buffer[exp_key_bytes];
-            for (size_t i = 0; i < ltp.nrounds + 1; i++) {
-                bitsetToBytes<ltp.blocksize/8>(lowmc.roundkeys[i], buffer + (i*ltp.blocksize/8));
+            for (size_t i = 0; i < lowmcparam.nrounds + 1; i++) {
+                bitsetToBytes<lowmcparam.blocksize/8>(lowmc.roundkeys[i], buffer + (i*lowmcparam.blocksize/8));
             }
             m_keybits.CreateBytes(exp_key_bytes);
             //use XORBytesReverse because we need the actual values in the circuit itself
@@ -105,24 +108,24 @@ int main(int argc, char** argv) {
         }
         //extract lin and rc
         {
-            constexpr uint32_t lin_layer_bytes = ltp.blocksize * ltp.blocksize / 8 * ltp.nrounds;
+            constexpr uint32_t lin_layer_bytes = lowmcparam.blocksize * lowmcparam.blocksize / 8 * lowmcparam.nrounds;
             uint8_t buffer[lin_layer_bytes];
-            for (size_t i = 0; i < ltp.nrounds; i++) {
-                for (size_t j = 0; j < ltp.blocksize; j++) {
-                    bitsetToBytes<ltp.blocksize / 8>(lowmc.LinMatrices[i][ltp.blocksize-1-j],
-                                                     buffer + (i * ltp.blocksize * ltp.blocksize / 8) +
-                                                     j * ltp.blocksize / 8);
+            for (size_t i = 0; i < lowmcparam.nrounds; i++) {
+                for (size_t j = 0; j < lowmcparam.blocksize; j++) {
+                    bitsetToBytes<lowmcparam.blocksize / 8>(lowmc.LinMatrices[i][lowmcparam.blocksize-1-j],
+                                                     buffer + (i * lowmcparam.blocksize * lowmcparam.blocksize / 8) +
+                                                     j * lowmcparam.blocksize / 8);
                 }
             }
             m_linlayer.CreateBytes(lin_layer_bytes);
             m_linlayer.Copy(buffer, 0, lin_layer_bytes);//Dont XORBytesReverse cause we use getBit internally instead of the values itself
         }
         {
-            constexpr uint32_t const_bytes = ltp.blocksize / 8 * ltp.nrounds;
+            constexpr uint32_t const_bytes = lowmcparam.blocksize / 8 * lowmcparam.nrounds;
             uint8_t buffer[const_bytes];
-            for (size_t i = 0; i < ltp.nrounds; i++) {
-                bitsetToBytes<ltp.blocksize / 8>(lowmc.roundconstants[i],
-                                                 buffer + (i * ltp.blocksize / 8));
+            for (size_t i = 0; i < lowmcparam.nrounds; i++) {
+                bitsetToBytes<lowmcparam.blocksize / 8>(lowmc.roundconstants[i],
+                                                 buffer + (i * lowmcparam.blocksize / 8));
             }
             m_roundconst.CreateBytes(const_bytes);
             m_roundconst.Copy(buffer, 0, const_bytes);//Dont XORBytesReverse cause we use getBit internally instead of the values itself
@@ -131,13 +134,14 @@ int main(int argc, char** argv) {
 
         crypto crypt = crypto(seclvl.symbits, (uint8_t *) const_seed);
         for (size_t i = 1; i < DB_SIZE; i++) {
-            crypt.hash(tmp, SHA256_OUT_BYTES, (uint8_t *) (&i), sizeof(i));
-            block a = bytesToBitset<SHA256_OUT_BYTES>(tmp);
-            //cout << i << ":" << hexStr(tmp, SHA256_OUT_BYTES) << "\n";
+            crypt.hash(tmp, HASH_SIZE, (uint8_t *) (&i), sizeof(i));
+            block a = bytesToBitset<HASH_SIZE>(tmp);
+            //cout << i << ":" << hexStr(tmp, HASH_SIZE) << "\n";
             a = lowmc.encrypt(a);
-            bitsetToBytes<SHA256_OUT_BYTES>(a, enc_db + i*SHA256_OUT_BYTES);
-            cout << i << ":" << hexStr(enc_db + i*SHA256_OUT_BYTES, SHA256_OUT_BYTES) << "\n";
+            bitsetToBytes<HASH_SIZE>(a, enc_db + i*HASH_SIZE);
+//            cout << i << ":" << hexStr(enc_db + i*HASH_SIZE, HASH_SIZE) << "\n";
         }
+        cout << "Local encryption finished...\n";
         //send db to client
         CSocket ssock, sock;
         ssock.Socket();
@@ -145,7 +149,7 @@ int main(int argc, char** argv) {
         ssock.Listen(1);
         ssock.Accept(sock);
         sock.Send(&DB_SIZE, sizeof(size_t));
-        sock.Send(enc_db, SHA256_OUT_BYTES*DB_SIZE);
+        sock.Send(enc_db, HASH_SIZE*DB_SIZE);
 
         size_t num_elements;
         sock.Receive(&num_elements, sizeof(size_t));
@@ -153,29 +157,29 @@ int main(int argc, char** argv) {
         ssock.Close();
         cout << "Send my database of "<< DB_SIZE << " elements, preparing to answer " << num_elements << " queries\n";
 
-        execute_lowmc_circuit(role, (char*) address.c_str(), port, nullptr, nullptr, num_elements, nthreads, mt_alg, sharing, ltp, 0, &crypt);
+        execute_lowmc_circuit(role, (char*) address.c_str(), port, nullptr, nullptr, num_elements, nthreads, mt_alg, sharing, lowmcparam, 0, &crypt);
     }
     else {
         LowMC lowmc(0); //key is not relevant for matrices
         {
-            constexpr uint32_t lin_layer_bytes = ltp.blocksize * ltp.blocksize / 8 * ltp.nrounds;
+            constexpr uint32_t lin_layer_bytes = lowmcparam.blocksize * lowmcparam.blocksize / 8 * lowmcparam.nrounds;
             uint8_t buffer[lin_layer_bytes];
-            for (size_t i = 0; i < ltp.nrounds; i++) {
-                for (size_t j = 0; j < ltp.blocksize; j++) {
-                    bitsetToBytes<ltp.blocksize / 8>(lowmc.LinMatrices[i][ltp.blocksize-1-j],
-                                                     buffer + (i * ltp.blocksize * ltp.blocksize / 8) +
-                                                     j * ltp.blocksize / 8);
+            for (size_t i = 0; i < lowmcparam.nrounds; i++) {
+                for (size_t j = 0; j < lowmcparam.blocksize; j++) {
+                    bitsetToBytes<lowmcparam.blocksize / 8>(lowmc.LinMatrices[i][lowmcparam.blocksize-1-j],
+                                                     buffer + (i * lowmcparam.blocksize * lowmcparam.blocksize / 8) +
+                                                     j * lowmcparam.blocksize / 8);
                 }
             }
             m_linlayer.CreateBytes(lin_layer_bytes);
             m_linlayer.Copy(buffer, 0, lin_layer_bytes); //Dont XORBytesReverse cause we use getBit internally instead of the values itself
         }
         {
-            constexpr uint32_t const_bytes = ltp.blocksize / 8 * ltp.nrounds;
+            constexpr uint32_t const_bytes = lowmcparam.blocksize / 8 * lowmcparam.nrounds;
             uint8_t buffer[const_bytes];
-            for (size_t i = 0; i < ltp.nrounds; i++) {
-                bitsetToBytes<ltp.blocksize / 8>(lowmc.roundconstants[i],
-                                                 buffer + (i * ltp.blocksize / 8));
+            for (size_t i = 0; i < lowmcparam.nrounds; i++) {
+                bitsetToBytes<lowmcparam.blocksize / 8>(lowmc.roundconstants[i],
+                                                 buffer + (i * lowmcparam.blocksize / 8));
             }
             m_roundconst.CreateBytes(const_bytes);
             m_roundconst.Copy(buffer, 0, const_bytes); //Dont XORBytesReverse cause we use getBit internally instead of the values itself
@@ -186,32 +190,35 @@ int main(int argc, char** argv) {
         sock.Socket();
         sock.Connect(address, port+1, 10000);
         sock.Receive(&dbsize, sizeof(size_t));
-        uint8_t* enc_db = new uint8_t[dbsize*SHA256_OUT_BYTES];
-        sock.Receive(enc_db, dbsize*SHA256_OUT_BYTES);
+        uint8_t* enc_db = new uint8_t[dbsize*HASH_SIZE];
+        sock.Receive(enc_db, dbsize*HASH_SIZE);
 
         //check for one or more elements to be in set
-        size_t elements[] = {1}; //,1234,88888,1000000,12345};
+        size_t elements[] = {1,1234,88888,1000000,12345};
         size_t num_elements = sizeof(elements)/sizeof(elements[0]);
-        uint8_t ele_hash[num_elements*SHA256_OUT_BYTES];
+//        size_t num_elements = 256;
+        uint8_t ele_hash[num_elements*HASH_SIZE];
         uint8_t* result;
         crypto crypt = crypto(seclvl.symbits, (uint8_t *) const_seed);
         for(size_t i = 0; i < num_elements; i++) {
-            crypt.hash(ele_hash +i*SHA256_OUT_BYTES, SHA256_OUT_BYTES, (uint8_t *) (&elements[i]), sizeof(elements[i]));
-            cout << i << ":" << hexStr(ele_hash + i*SHA256_OUT_BYTES, SHA256_OUT_BYTES) << "\n";
+            crypt.hash(ele_hash +i*HASH_SIZE, HASH_SIZE, (uint8_t *) (&elements[i]), sizeof(elements[i]));
+//            crypt.hash(ele_hash +i*HASH_SIZE, HASH_SIZE, (uint8_t *) (&i), sizeof(i));
+            //cout << i << ":" << hexStr(ele_hash + i*HASH_SIZE, HASH_SIZE) << "\n";
         }
         sock.Send(&num_elements, sizeof(num_elements));
         sock.Close();
         cout << "Recieved database of "<< dbsize << " elements, sending " << num_elements << " queries\n";
 
-        execute_lowmc_circuit(role, (char*) address.c_str(), port, ele_hash, &result, num_elements, nthreads, mt_alg, sharing, ltp, 0, &crypt);
+        execute_lowmc_circuit(role, (char*) address.c_str(), port, ele_hash, &result, num_elements, nthreads, mt_alg, sharing, lowmcparam, 0, &crypt);
 
 
         //compute set intersection
         for(size_t i = 0; i < num_elements; i++) {
-            cout << i << ":" << hexStr(result + i*SHA256_OUT_BYTES, SHA256_OUT_BYTES) << "\n";
+            cout << i << ":" << hexStr(result + i*HASH_SIZE, HASH_SIZE) << "\n";
             for(size_t dbi = 0; dbi < dbsize; dbi++) {
-                if(memcmp(result+i*SHA256_OUT_BYTES, enc_db+dbi*SHA256_OUT_BYTES, SHA256_OUT_BYTES) == 0) {
+                if(memcmp(result+i*HASH_SIZE, enc_db+dbi*HASH_SIZE, HASH_SIZE) == 0) {
                     cout << "Element " << elements[i] << " is in the servers set!\n";
+                    break;
                 }
             }
         }

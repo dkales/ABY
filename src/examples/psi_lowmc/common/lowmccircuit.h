@@ -61,7 +61,7 @@ struct matmul {
 //parameters: sboxes (m), key-length (k), statesize (n), data (d), rounds (r)
 static constexpr LowMCParams stp = { 49, 80, 256, 64, 12 };
 static constexpr LowMCParams ltp = { 63, 128, 256, 128, 14 };
-static constexpr LowMCParams test = { 63, 128, 256, 128, 14 };
+static constexpr LowMCParams lowmcparam = ltp; //{ 10, 128, 128, 128, 32 };
 
 static const LowMCParams lowmcparamlookup[] = { stp, ltp};
 

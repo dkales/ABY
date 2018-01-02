@@ -69,9 +69,9 @@ int32_t execute_lowmc_circuit(e_role role, char* address, uint16_t port, uint8_t
     if(role == CLIENT) {
         //fix endianess
         *outval = s_ciphertext->get_clear_value_ptr();
-        input.CreateZeros(param.blocksize);
-        input.XORBytesReverse(*outval,0,param.blocksize/8);
-        memcpy(*outval, input.GetArr(), param.blocksize/8);
+        input.CreateZeros(nvals*param.blocksize);
+        input.XORBytesReverse(*outval,0,nvals*param.blocksize/8);
+        memcpy(*outval, input.GetArr(), nvals*param.blocksize/8);
     }
 
     cout << party->GetTiming(P_SETUP) << "\t" << party->GetTiming(P_ONLINE) << "\t" << party->GetTiming(P_TOTAL) << endl;
@@ -91,7 +91,7 @@ share* BuildLowMCCircuit(share* val, share* key, BooleanCircuit* circ, const Low
     m_constCtr = 0;
 
     //Build the GrayCode for the optimal window-size
-    uint32_t wsize = floor_log2(statesize) - 2;
+    uint32_t wsize = floor_log2(statesize);
     m_tGrayCode = build_code(wsize);
 
     //copy the input to the current state
@@ -111,22 +111,22 @@ share* BuildLowMCCircuit(share* val, share* key, BooleanCircuit* circ, const Low
 
 
         //multiply state with GF2Matrix
-        LowMCMultiplyState(state, statesize, circ);//Naive version of the state multiplication
+        //LowMCMultiplyState(state, statesize, circ);//Naive version of the state multiplication
+        FourRussiansMatrixMult(state, statesize, circ);//4 Russians version of the state multiplication
+        //LowMCMultiplyStateCallback(state, statesize, circ); //use callbacks to perform the multiplication in plaintext
 //        if(round == round) {
 //            circ->PutPrintValueGate(new boolshare(state, circ), "lin");
 //        }
-        //FourRussiansMatrixMult(state, statesize, circ);//4 Russians version of the state multiplication
-        //LowMCMultiplyStateCallback(state, statesize, circ); //use callbacks to perform the multiplication in plaintext
 
         //XOR constants
         LowMCXORConstants(state, statesize, circ);
-//        if(round == round) {
+//        if(round == 1) {
 //            circ->PutPrintValueGate(new boolshare(state, circ), "rc");
 //        }
 
         //XOR with multiplied key
         LowMCXORMultipliedKey(state, key->get_wires(), statesize, round, circ);
-//        if(round == round) {
+//        if(round == 1) {
 //            circ->PutPrintValueGate(new boolshare(state, circ), "rk");
 //        }
 
@@ -152,12 +152,13 @@ void LowMCMultiplyState(vector<uint32_t>& state, uint32_t lowmcstatesize, Boolea
     vector<uint32_t> tmpstate(lowmcstatesize);
     for (uint32_t i = 0; i < lowmcstatesize; i++) {
         tmpstate[i] = 0;
-        for (uint32_t j = 0; j < lowmcstatesize; j++, m_linCtr++) {
-            if (m_linlayer.GetBit(m_linCtr)) {
+        for (uint32_t j = 0; j < lowmcstatesize; j++) {
+            if (m_linlayer.GetBit(m_linCtr + j + i*lowmcstatesize)) {
                 tmpstate[i] = circ->PutXORGate(tmpstate[i], state[j]);
             }
         }
     }
+    m_linCtr += lowmcstatesize*lowmcstatesize;
     state = tmpstate;
 }
 
@@ -237,12 +238,12 @@ void LowMCPutSBox(uint32_t& o1, uint32_t& o2, uint32_t& o3, BooleanCircuit* circ
 
 void FourRussiansMatrixMult(vector<uint32_t>& state, uint32_t lowmcstatesize, BooleanCircuit* circ) {
     //round to nearest square for optimal window size
-    uint32_t wsize = floor_log2(lowmcstatesize) - 2;
+    uint32_t wsize = floor_log2(lowmcstatesize);
 
     //will only work if the statesize is a multiple of the window size
     uint32_t* lutptr;
     uint32_t* lut = (uint32_t*) malloc(sizeof(uint32_t) * (1 << wsize));
-    uint32_t i, j, bitctr, tmp = 0;
+    uint32_t i, j, tmp = 0;
 
     lut[0] = m_nZeroGate;	//circ->PutConstantGate(0, 1);
 
@@ -252,16 +253,17 @@ void FourRussiansMatrixMult(vector<uint32_t>& state, uint32_t lowmcstatesize, Bo
     for (i = 0; i < lowmcstatesize; i++)
         state_pad[i] = state[i];
 
-    for (i = 0, bitctr = 0; i < ceil_divide(lowmcstatesize, wsize); i++) { //for each column-window
+    for (i = 0; i < ceil_divide(lowmcstatesize, wsize); i++) { //for each column-window
         for (j = 1; j < (1 << wsize); j++) {
             lut[m_tGrayCode->ord[j]] = circ->PutXORGate(lut[m_tGrayCode->ord[j - 1]], state_pad[i * wsize + m_tGrayCode->inc[j - 1]]);
         }
 
-        for (j = 0; j < lowmcstatesize; j++, bitctr += wsize) {
-            m_linlayer.GetBits((BYTE*) &tmp, bitctr, wsize);
-            tmpstate[i] = circ->PutXORGate(tmpstate[j], lut[tmp]);
+        for (j = 0; j < lowmcstatesize; j++) {
+            m_linlayer.GetBits((BYTE*) &tmp, m_linCtr+i*wsize+j*lowmcstatesize, wsize);
+            tmpstate[j] = circ->PutXORGate(tmpstate[j], lut[REVERSE_BYTE_ORDER[tmp]]);
         }
     }
+    m_linCtr += lowmcstatesize*lowmcstatesize;
 
     for (i = 0; i < lowmcstatesize; i++)
         state[i] = tmpstate[i];
