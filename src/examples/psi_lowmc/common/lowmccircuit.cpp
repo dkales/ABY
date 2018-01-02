@@ -111,7 +111,7 @@ share* BuildLowMCCircuit(share* val, share* key, BooleanCircuit* circ, const Low
 
 
         //multiply state with GF2Matrix
-        //LowMCMultiplyState(state, statesize, circ);//Naive version of the state multiplication
+//        LowMCMultiplyState(state, statesize, circ);//Naive version of the state multiplication
         FourRussiansMatrixMult(state, statesize, circ);//4 Russians version of the state multiplication
         //LowMCMultiplyStateCallback(state, statesize, circ); //use callbacks to perform the multiplication in plaintext
 //        if(round == round) {
@@ -151,7 +151,7 @@ void LowMCAddRoundKey(vector<uint32_t>& val, vector<uint32_t> key, uint32_t lowm
 void LowMCMultiplyState(vector<uint32_t>& state, uint32_t lowmcstatesize, BooleanCircuit* circ) {
     vector<uint32_t> tmpstate(lowmcstatesize);
     for (uint32_t i = 0; i < lowmcstatesize; i++) {
-        tmpstate[i] = 0;
+        tmpstate[i] = m_nZeroGate;
         for (uint32_t j = 0; j < lowmcstatesize; j++) {
             if (m_linlayer.GetBit(m_linCtr + j + i*lowmcstatesize)) {
                 tmpstate[i] = circ->PutXORGate(tmpstate[i], state[j]);
