@@ -130,7 +130,7 @@ void LowMCAddRoundKey(vector<uint32_t>& val, vector<uint32_t> key, uint32_t lowm
 void LowMCMultiplyState(vector<uint32_t>& state, uint32_t lowmcstatesize, BooleanCircuit* circ) {
 	vector<uint32_t> tmpstate(lowmcstatesize);
 	for (uint32_t i = 0; i < lowmcstatesize; i++) {
-		tmpstate[i] = 0;
+		tmpstate[i] = m_nZeroGate;
 		for (uint32_t j = 0; j < lowmcstatesize; j++, m_nRndCtr++) {
 			if (m_vRandomBits.GetBit(m_nRndCtr)) {
 				tmpstate[i] = circ->PutXORGate(tmpstate[i], state[j]);
