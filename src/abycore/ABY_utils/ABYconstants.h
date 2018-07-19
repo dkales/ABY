@@ -19,20 +19,30 @@
 #ifndef _ABY_CONSTANTS_H_
 #define _ABY_CONSTANTS_H_
 
-#include "../ENCRYPTO_utils/constants.h"
+#include <string>
+#include <ENCRYPTO_utils/constants.h>
 
-/* Uncomment production to circumvent output reconstruction in the PrintValue and Assert gates */
-//#define ABY_PRODUCTION
+// Set to 1 for production. 1 will circumvent output reconstruction in the PrintValue and Assert gates, 0 prints these intermediate values.
+#define ABY_PRODUCTION 0
 
+//#define ABYDEBUG
+//#define PRINT_OUTPUT
+//#define DEBUGCOMM
+#define DEBUGABYPARTY 0
+
+#define PRINT_PERFORMANCE_STATS 0 //prints overall runtime statistics and gate counts
+#define PRINT_COMMUNICATION_STATS 0 //prints communication statistics
+#define BENCHONLINEPHASE 0 //show very detailed runtime statistic on each sharing for online phase, typically for troubleshooting
+
+#define BENCH_HARDWARE 0 // measure RTT, connection bandwidth and AES
 
 #define BATCH
 
 //#define ABY_OT
-//#define NUMOTBLOCKS 256
 //#define VERIFY_OT
 
-#define ABY_PARTY_CHANNEL MAX_NUM_COMM_CHANNELS-3
-#define ABY_SETUP_CHANNEL ABY_PARTY_CHANNEL-1
+#define ABY_PARTY_CHANNEL (MAX_NUM_COMM_CHANNELS-3)
+#define ABY_SETUP_CHANNEL (ABY_PARTY_CHANNEL-1)
 #define DJN_CHANNEL	32
 #define DGK_CHANNEL DJN_CHANNEL
 
@@ -40,7 +50,8 @@
  \def 	GARBLED_TABLE_WINDOW
  \brief	Window size of Yao's garbled circuits in pipelined execution
  */
-#define GARBLED_TABLE_WINDOW NUMOTBLOCKS * AES_BITS//1 * AES_BITS//1048575 //1048575 //=0xFFFFF for faster modulo operation
+#define GARBLED_TABLE_WINDOW 1024 * AES_BITS//1 * AES_BITS//1048575 //1048575 //=0xFFFFF for faster modulo operation
+//                           ^^^^ = NUMOTBLOCKS
 
 #define BATCH
 
@@ -49,12 +60,9 @@
 //#define USE_PIPELINED_AES_NI
 //#define USE_KK_OT_FOR_MT
 //#define GETCLEARVALUE_DEBUG
+//#define DEBUGABYPARTY
 
-#define MAXGATES 32000000
 #define USE_MULTI_MUX_GATES
-
-//TODO eventually remove this and prefix all couts, etc with std::
-using namespace std;
 
 /**
  \enum 	e_role
@@ -105,6 +113,7 @@ enum e_gatetype {
 	G_SHARED_OUT = 0x09, /**< Enum for shared output gate, where the output is kept secret-shared between parties after the evaluation*/
 	G_TT = 0x0A, /**< Enum for computing an arbitrary truth table gate. Is needed for the 1ooN OT in SPLUT */
 	G_SHARED_IN = 0x0B, /**< Enum for pre-shared input gate, where the parties dont secret-share (e.g. in outsourcing) */
+	G_NON_LIN_CONST = 0x0C, /**< Enum for non-linear gate with a constant input (AND in boolean circuits, MUL in arithmetic circuits. One of the parents need to be a CONST gate */
 	G_PRINT_VAL = 0x40, /**< Enum gate that reconstructs the shares and prints the plaintext value with the designated string */
 	G_ASSERT = 0x41, /**< Enum gate that reconstructs the shares and compares it to an provided input plaintext value */
 	G_COMBINE = 0x80, /**< Enum for COMBINER gates that combine multiple single-value gates to one multi-value gate  */
@@ -196,7 +205,7 @@ typedef struct {
 	std::string opname;
 } aby_ops_t;
 
-static string get_circuit_type_name(e_circuit c) {
+static std::string get_circuit_type_name(e_circuit c) {
 	switch(c) {
 	case C_BOOLEAN:
 		return "BOOLEAN";
@@ -207,7 +216,7 @@ static string get_circuit_type_name(e_circuit c) {
 	}
 }
 
-static string get_role_name(e_role r) {
+static std::string get_role_name(e_role r) {
 	switch(r) {
 	case SERVER:
 		return "SERVER";
@@ -220,7 +229,7 @@ static string get_role_name(e_role r) {
 	}
 }
 
-static string get_sharing_name(e_sharing s) {
+static std::string get_sharing_name(e_sharing s) {
 	switch (s) {
 	case S_BOOL:
 		return "Bool";
@@ -237,11 +246,12 @@ static string get_sharing_name(e_sharing s) {
 	}
 }
 
-static string get_gate_type_name(e_gatetype g) {
+static std::string get_gate_type_name(e_gatetype g) {
 	switch (g) {
 	case G_LIN: return "Linear";
 	case G_NON_LIN: return "Non-Linear";
 	case G_NON_LIN_VEC: return "Vector-Non-Linear";
+	case G_NON_LIN_CONST: return "Constant-Non-Linear";
 	case G_IN: return "Input";
 	case G_OUT: return "Output";
 	case G_SHARED_OUT: return "Shared output";
@@ -271,7 +281,7 @@ typedef enum fp_op_setting{
 }fp_op_setting;
 
 
-static string get_op_name(e_operation op) {
+static std::string get_op_name(e_operation op) {
 	switch (op) {
 	case OP_XOR:
 		return "XOR";
@@ -334,12 +344,12 @@ static string get_op_name(e_operation op) {
 /** \var g_TruthTable
  \brief A truth-table for an AND gate
  */
-const uint8_t g_TruthTable[4] = { 0, 0, 0, 1 };		// and
+constexpr uint8_t g_TruthTable[4] = { 0, 0, 0, 1 };		// and
 
 /**\var m_vLUT_GT_IN
  * \brief Lookup-Table for the Greater-than functionality on input bits in No-MT sharing
  */
-const uint64_t m_vLUT_GT_IN[4][8] = {
+constexpr uint64_t m_vLUT_GT_IN[4][8] = {
 		{0x86L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
 		{0x86005586L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
 		{0x5555555586005586L, 0x8600558600000000L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
@@ -348,7 +358,7 @@ const uint64_t m_vLUT_GT_IN[4][8] = {
 /**\var m_vLUT_GT_INTERNAL
  * \brief Lookup-Table for the Greater-than functionality on internal bits in No-MT sharing
  */
-const uint64_t m_vLUT_GT_INTERNAL[3][8] = {
+constexpr uint64_t m_vLUT_GT_INTERNAL[3][8] = {
 		{0xb1e45500, 0L, 0L, 0L, 0L, 0L, 0L, 0L},
 		{0x5555555500000000L, 0xe4b10055b1e45500L, 0L, 0L, 0L, 0L, 0L, 0L},
 		{0x0L, 0x0L, 0x5555555555555555L, 0x5555555555555555L, 0x5555555500000000L, 0xe4b10055b1e45500L, 0x55555555L, 0xb1e45500e4b10055L}};
@@ -359,7 +369,7 @@ const uint64_t m_vLUT_GT_INTERNAL[3][8] = {
 /**\var m_vLUT_ADD_IN
  * \brief Lookup-Table for the addition functionality on inputs in No-MT sharing
  */
-const uint64_t m_vLUT_ADD_IN[4][24] = {
+constexpr uint64_t m_vLUT_ADD_IN[4][24] = {
 		{0x8L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
 		{0xb24a90a90200L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
 		{0x5444522052201000L, 0x5444522052201000L, 0x5444522052201000L, 0xdcccdaa8daa89888L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
@@ -371,13 +381,13 @@ const uint64_t m_vLUT_ADD_IN[4][24] = {
 /**\var m_vLUT_ADD_N_OUTS
  * \brief Number of outputs for the m_vLUT_ADD_IN LUT
  */
-const uint32_t m_vLUT_ADD_N_OUTS[4] = {1, 3, 4, 6};
+constexpr uint32_t m_vLUT_ADD_N_OUTS[4] = {1, 3, 4, 6};
 
 
 /**\var m_vLUT_ADD_INTERNAL
  * \brief Lookup-Table for the addition functionality on internal signals in No-MT sharing
  */
-const uint64_t m_vLUT_ADD_INTERNAL[2][16] = {
+constexpr uint64_t m_vLUT_ADD_INTERNAL[2][16] = {
 		{0xeeaae400L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
 		{0x3232222232100000L, 0x3232222232100000L, 0x3232222232100000L, 0x3232222232100000L, 0x3232222232100000L, 0xfafaaaaafa500000L, 0xbabaaaaaba988888L, 0xfafaaaaafad88888L,
 				0xbabaaaaaba988888L, 0xbabaaaaaba988888L, 0xbabaaaaaba988888L, 0xbabaaaaaba988888L, 0xbabaaaaaba988888L, 0xfafaaaaafad88888L, 0xbabaaaaaba988888L, 0xfafaaaaafad88888L}
@@ -386,7 +396,7 @@ const uint64_t m_vLUT_ADD_INTERNAL[2][16] = {
 /**\var m_vLUT_ADD_CRIT_IN
  * \brief Lookup-Table for the addition functionality on the critical path where the inputs are real values in No-MT sharing
  */
-const uint64_t m_vLUT_ADD_CRIT_IN[4][16] = {
+constexpr uint64_t m_vLUT_ADD_CRIT_IN[4][16] = {
 		{0x8L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
 		{0x3222300030001000L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
 		{0x200692600600200L, 0xe00200fb6e00e0L, 0xfb6f24f24b24fb6eL, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
@@ -397,7 +407,7 @@ const uint64_t m_vLUT_ADD_CRIT_IN[4][16] = {
 /**\var m_vLUT_ADD_CRIT
  * \brief Lookup-Table for the addition functionality on the critical path where the inputs are parity/carry signals in No-MT sharing
  */
-const uint64_t m_vLUT_ADD_CRIT[3][6] = {
+constexpr uint64_t m_vLUT_ADD_CRIT[3][6] = {
 		{0xf8L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
 		{0xffeaffeaffc05540L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
 		{0xb6926db600249200L, 0x2492006db6926dL, 0xffffb6ffffb6fffeL, 0xffb6ffff24b6db24L, 0x24b6db24ffffb6ffL, 0xffffb6ffffb6ffffL}
@@ -406,7 +416,7 @@ const uint64_t m_vLUT_ADD_CRIT[3][6] = {
 /**\var m_vLUT_ADD_INV
  * \brief Lookup-Table for the addition functionality on the inverse carry tree in No-MT sharing
  */
-const uint64_t m_vLUT_ADD_INV[3][6] = {
+constexpr uint64_t m_vLUT_ADD_INV[3][6] = {
 		{0xf8L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
 		{0xffeaffeaddc85540L, 0x0L, 0x0L, 0x0L, 0x0L, 0x0L},
 		{0xb692659610249200L, 0x302492006db6926dL, 0xffffb6ffffb6e79eL,	0xffb6f7df34b6db24L, 0x34b6db24ffffb6ffL, 0xffffb6ffffb6f7dfL}

@@ -17,6 +17,8 @@
  */
 
 #include "millionaire_prob.h"
+#include "../../../abycore/circuit/booleancircuits.h"
+#include "../../../abycore/sharing/sharing.h"
 
 int32_t test_millionaire_prob_circuit(e_role role, char* address, uint16_t port, seclvl seclvl,
 		uint32_t nvals, uint32_t bitlen, uint32_t nthreads, e_mt_gen_alg mt_alg,
@@ -35,7 +37,7 @@ int32_t test_millionaire_prob_circuit(e_role role, char* address, uint16_t port,
 		Step 2: Get to know all the sharing types available in the program.
 	*/
 
-	vector<Sharing*>& sharings = party->GetSharings();
+	std::vector<Sharing*>& sharings = party->GetSharings();
 
 	/**
 		Step 3: Create the circuit object on the basis of the sharing type
@@ -107,12 +109,12 @@ int32_t test_millionaire_prob_circuit(e_role role, char* address, uint16_t port,
 	*/
 	output = s_out->get_clear_value<uint32_t>();
 
-	cout << "Testing Millionaire's Problem in " << get_sharing_name(sharing)
-				<< " sharing: " << endl;
-	cout << "\nAlice Money:\t" << alice_money;
-	cout << "\nBob Money:\t" << bob_money;
-	cout << "\nCircuit Result:\t" << (output ? ALICE : BOB);
-	cout << "\nVerify Result: \t" << ((alice_money > bob_money) ? ALICE : BOB)
+	std::cout << "Testing Millionaire's Problem in " << get_sharing_name(sharing)
+				<< " sharing: " << std::endl;
+	std::cout << "\nAlice Money:\t" << alice_money;
+	std::cout << "\nBob Money:\t" << bob_money;
+	std::cout << "\nCircuit Result:\t" << (output ? ALICE : BOB);
+	std::cout << "\nVerify Result: \t" << ((alice_money > bob_money) ? ALICE : BOB)
 				<< "\n";
 
 	delete party;

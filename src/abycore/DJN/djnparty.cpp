@@ -17,12 +17,14 @@
  */
 
 #include "djnparty.h"
+#include <ENCRYPTO_utils/timer.h>
+#include <ENCRYPTO_utils/utils.h>
 
 #define CHECKMT 0
-#define DGK_DEBUG 0
+#define DJN_DEBUG 0
 #define NETDEBUG 0
 #define NETDEBUG2 0
-#define WINDOWSIZE 50000//maximum size of a network packet in Byte
+#define WINDOWSIZE 65536//maximum size of a network packet in Byte
 
 /**
  * initializes a DJN_Party with the asymmetric security parameter and the sharelength.
@@ -35,12 +37,9 @@ DJNParty::DJNParty(UINT DJNbits, UINT sharelen, channel* chan) {
 	m_nDJNbits = DJNbits;
 	m_nBuflen = DJNbits / 4 + 1;
 
-#if DEBUG
-	cout << "(sock) Created party with " << DJNbits << " bits and" << m_nBuflen << endl;
+#if DJN_DEBUG
+	std::cout << "(sock) Created party with " << DJNbits << " bits and" << m_nBuflen << std::endl;
 #endif
-
-	gmp_randinit_default(m_randstate);
-	gmp_randseed_ui(m_randstate, rand());
 
 	keyGen();
 	keyExchange(chan);
@@ -52,19 +51,16 @@ DJNParty::DJNParty(UINT DJNbits, UINT sharelen) {
 	m_nDJNbits = DJNbits;
 	m_nBuflen = DJNbits / 4 + 1;
 
-#if DEBUG
-	cout << "(nosock) Created party with " << DJNbits << " bits and" << m_nBuflen << endl;
+#if DJN_DEBUG
+	std::cout << "(nosock) Created party with " << DJNbits << " bits and" << m_nBuflen << std::endl;
 #endif
-
-	gmp_randinit_default(m_randstate);
-	gmp_randseed_ui(m_randstate, rand());
 
 	keyGen();
 }
 
 void DJNParty::keyGen() {
-#if DEBUG
-	cout << "KG" << endl;
+#if DJN_DEBUG
+	std::cout << "KG" << std::endl;
 #endif
 	djn_keygen(m_nDJNbits, &m_localpub, &m_prv);
 }
@@ -77,10 +73,9 @@ void DJNParty::setSharelLength(UINT sharelen) {
  * deletes party and frees keys and randstate
  */
 DJNParty::~DJNParty() {
-#if DEBUG
-	cout << "Deleting DJNParty...";
+#if DJN_DEBUG
+	std::cout << "Deleting DJNParty...";
 #endif
-	gmp_randclear(m_randstate);
 	djn_freeprvkey(m_prv);
 	djn_freepubkey(m_localpub);
 	djn_freepubkey(m_remotepub);
@@ -104,8 +99,8 @@ void DJNParty::preCompBench(BYTE * bA, BYTE * bB, BYTE * bC, BYTE * bA1, BYTE * 
 	UINT offset = 0;
 	UINT limit = packshares; // upper bound for a package shares, used to handle non-full last packages / alignment
 
-#if DEBUG
-	cout << "djnbits: " << m_nDJNbits << " sharelen: " << m_nShareLength << " packlen: " << maxShareLen << " numshares: " << packshares << " numpacks: " << numpacks << endl;
+#if DJN_DEBUG
+	std::cout << "djnbits: " << m_nDJNbits << " sharelen: " << m_nShareLength << " packlen: " << maxShareLen << " numshares: " << packshares << " numpacks: " << numpacks << std::endl;
 #endif
 
 	mpz_t r, x, y, z;
@@ -137,9 +132,9 @@ void DJNParty::preCompBench(BYTE * bA, BYTE * bB, BYTE * bC, BYTE * bA1, BYTE * 
 		mpz_import(x, 1, 1, shareBytes, 0, 0, bA + i * shareBytes);
 		mpz_import(y, 1, 1, shareBytes, 0, 0, bB + i * shareBytes);
 
-		djn_encrypt_crt(r, m_localpub, m_prv, x, m_randstate);
+		djn_encrypt_crt(r, m_localpub, m_prv, x);
 		mpz_export(abuf + i * m_nBuflen, NULL, -1, 1, 1, 0, r);
-		djn_encrypt_crt(z, m_localpub, m_prv, y, m_randstate);
+		djn_encrypt_crt(z, m_localpub, m_prv, y);
 		mpz_export(bbuf + i * m_nBuflen, NULL, -1, 1, 1, 0, z);
 
 	}
@@ -151,7 +146,7 @@ void DJNParty::preCompBench(BYTE * bA, BYTE * bB, BYTE * bC, BYTE * bA1, BYTE * 
 
 	while (tosend > 0) {
 
-		window = min(window, tosend);
+		window = std::min(window, tosend);
 
 		chan->send(abuf + offset, window);
 		chan->blocking_receive(abuf + offset, window);
@@ -197,8 +192,10 @@ void DJNParty::preCompBench(BYTE * bA, BYTE * bB, BYTE * bC, BYTE * bA1, BYTE * 
 		}
 
 		// pick random r for masking
-		mpz_urandomm(x, m_randstate, m_remotepub->n);
-		djn_encrypt_fb(y, m_remotepub, x, m_randstate);
+		aby_prng(x, mpz_sizeinbase(m_remotepub->n, 2) + 128);
+		mpz_mod(x, x, m_remotepub->n);
+
+		djn_encrypt_fb(y, m_remotepub, x);
 
 		// "add" encrypted r and add to buffer
 		mpz_mul(z, z, y);
@@ -231,7 +228,7 @@ void DJNParty::preCompBench(BYTE * bA, BYTE * bB, BYTE * bC, BYTE * bA1, BYTE * 
 	offset = 0;
 
 	while (tosend > 0) {
-		window = min(window, tosend);
+		window = std::min(window, tosend);
 
 		chan->send(zbuf + offset, window);
 		chan->blocking_receive(zbuf + offset, window);
@@ -268,7 +265,7 @@ void DJNParty::preCompBench(BYTE * bA, BYTE * bB, BYTE * bC, BYTE * bA1, BYTE * 
 	}
 
 #if CHECKMT
-	cout << "Checking MT validity with values from other party:" << endl;
+	std::cout << "Checking MT validity with values from other party:" << std::endl;
 
 	mpz_t ai, bi, ci, ai1, bi1, ci1, ta, tb;
 	mpz_inits(ai, bi, ci, ai1, bi1, ci1, ta, tb, NULL);
@@ -298,12 +295,12 @@ void DJNParty::preCompBench(BYTE * bA, BYTE * bB, BYTE * bC, BYTE * bA1, BYTE * 
 		mpz_mod_2exp(tb, tb, m_nShareLength);
 
 		if (mpz_cmp(ta, tb) == 0) {
-			cout << "MT is fine - i:" << i << "| " << ai << " " << bi << " " << ci << " . " << ai1 << " " << bi1 << " " << ci1 << endl;
+			std::cout << "MT is fine - i:" << i << "| " << ai << " " << bi << " " << ci << " . " << ai1 << " " << bi1 << " " << ci1 << std::endl;
 		} else {
-			cout << "Error in MT - i:" << i << "| " << ai << " " << bi << " " << ci << " . " << ai1 << " " << bi1 << " " << ci1 << endl;
+			std::cout << "Error in MT - i:" << i << "| " << ai << " " << bi << " " << ci << " . " << ai1 << " " << bi1 << " " << ci1 << std::endl;
 		}
 
-		//cout << (mpz_cmp(c1[i], a1[i]) == 0 ? "MT is fine." : "Error in MT!") << endl;
+		//std::cout << (mpz_cmp(c1[i], a1[i]) == 0 ? "MT is fine." : "Error in MT!") << std::endl;
 	}
 	mpz_clears(ai, bi, ci, ai1, bi1, ci1, ta, tb, NULL);
 #endif
@@ -330,21 +327,21 @@ void DJNParty::preCompBench(BYTE * bA, BYTE * bB, BYTE * bC, BYTE * bA1, BYTE * 
  */
 void DJNParty::benchPreCompPacking1(channel* chan, BYTE * buf, UINT packlen, UINT numshares, mpz_t * a, mpz_t * b, mpz_t * c, mpz_t * a1, mpz_t * b1, mpz_t * c1, mpz_t r, mpz_t x,
 		mpz_t y, mpz_t z) {
-#if DEBUG
-	cout << "packlen: " << packlen << " numshares: " << numshares << endl;
+#if DJN_DEBUG
+	std::cout << "packlen: " << packlen << " numshares: " << numshares << std::endl;
 #endif
 
 	for (UINT i = 0; i < numshares; i++) {
-		djn_encrypt_crt(r, m_localpub, m_prv, a[i], m_randstate);
+		djn_encrypt_crt(r, m_localpub, m_prv, a[i]);
 		mpz_export(buf + 2 * i * m_nBuflen, NULL, -1, 1, 1, 0, r);
-		djn_encrypt_crt(r, m_localpub, m_prv, b[i], m_randstate);
+		djn_encrypt_crt(r, m_localpub, m_prv, b[i]);
 		mpz_export(buf + (2 * i + 1) * m_nBuflen, NULL, -1, 1, 1, 0, r);
 	}
 
 	chan->send(buf, (uint64_t) m_nBuflen * numshares * 2);
 
 #if NETDEBUG
-	cout << " SEND " << endl;
+	std::cout << " SEND " << std::endl;
 	for (UINT xx=0; xx < m_nBuflen * numshares * 2; xx++) {
 		printf("%02x.", *(buf + xx));
 	}
@@ -353,7 +350,7 @@ void DJNParty::benchPreCompPacking1(channel* chan, BYTE * buf, UINT packlen, UIN
 	chan->blocking_receive(buf, (uint64_t) m_nBuflen * numshares * 2);
 
 #if NETDEBUG
-	cout << " RECV " << endl;
+	std::cout << " RECV " << std::endl;
 	for (UINT xx=0; xx < m_nBuflen * numshares * 2; xx++) {
 		printf("%02x.", *(buf + xx));
 	}
@@ -378,8 +375,9 @@ void DJNParty::benchPreCompPacking1(channel* chan, BYTE * buf, UINT packlen, UIN
 	}
 
 // pick random r for masking
-	mpz_urandomm(x, m_randstate, m_remotepub->n);
-	djn_encrypt_fb(y, m_remotepub, x, m_randstate);
+	aby_prng(x, mpz_sizeinbase(m_remotepub->n, 2) + 128);
+	mpz_mod(x, x, m_remotepub->n);
+	djn_encrypt_fb(y, m_remotepub, x);
 
 // "add" encrypted r and send
 	mpz_mul(z, z, y);
@@ -419,8 +417,8 @@ void DJNParty::keyExchange(channel* chan) {
 //free a and b
 	mpz_clears(a, b, NULL);
 
-#if DEBUG
-	cout << "KX done. This pubkey: " << m_localpub->n << " remotekey: " << m_remotepub->n << endl;
+#if DJN_DEBUG
+	std::cout << "KX done. This pubkey: " << m_localpub->n << " remotekey: " << m_remotepub->n << std::endl;
 #endif
 }
 
@@ -435,7 +433,7 @@ void DJNParty::sendmpz_t(mpz_t t, channel* chan, BYTE * buf) {
 	}
 
 #if NETDEBUG2
-	cout << mpz_sizeinbase(t, 256) << " vs. " << m_nBuflen << endl;
+	std::cout << mpz_sizeinbase(t, 256) << " vs. " << m_nBuflen << std::endl;
 #endif
 
 	mpz_export(buf, NULL, -1, 1, 1, 0, t);
@@ -444,12 +442,12 @@ void DJNParty::sendmpz_t(mpz_t t, channel* chan, BYTE * buf) {
 	chan->send(buf, (uint64_t) m_nBuflen);
 
 #if NETDEBUG
-	cout << endl << "SEND" << endl;
+	std::cout << std::endl << "SEND" << std::endl;
 	for (int i = 0; i < m_nBuflen; i++) {
 		printf("%02x.", *(m_sendbuf + i));
 	}
 
-	cout << endl << "sent: " << t << " with len: " << m_nBuflen << " should have been " << mpz_sizeinbase(t, 256) << endl;
+	std::cout << std::endl << "sent: " << t << " with len: " << m_nBuflen << " should have been " << mpz_sizeinbase(t, 256) << std::endl;
 #endif
 }
 
@@ -461,12 +459,12 @@ void DJNParty::receivempz_t(mpz_t t, channel* chan, BYTE * buf) {
 	mpz_import(t, m_nBuflen, -1, 1, 1, 0, buf);
 
 #if NETDEBUG
-	cout << endl << "RECEIVE" << endl;
+	std::cout << std::endl << "RECEIVE" << std::endl;
 	for (int i = 0; i < m_nBuflen; i++) {
 		printf("%02x.", *(m_recbuf + i));
 	}
 
-	cout << "received: " << t << " with len: " << m_nBuflen << endl;
+	std::cout << "received: " << t << " with len: " << m_nBuflen << std::endl;
 #endif
 }
 
@@ -486,7 +484,7 @@ void DJNParty::sendmpz_t(mpz_t t, channel* chan) {
 
 	free(arr);
 #if NETDEBUG
-	cout << "sent: " << t << " with len: " << bytelen << endl;
+	std::cout << "sent: " << t << " with len: " << bytelen << std::endl;
 #endif
 }
 
@@ -506,15 +504,15 @@ void DJNParty::receivempz_t(mpz_t t, channel* chan) {
 
 	free(arr);
 #if NETDEBUG
-	cout << "received: " << t << " with len: " << bytelen << endl;
+	std::cout << "received: " << t << " with len: " << bytelen << std::endl;
 #endif
 }
 
-#if DEBUG
+#if DJN_DEBUG
 void DJNParty::printBuf(BYTE* b, UINT len) {
 	for (UINT i = 0; i < len; i++) {
 		printf("%02x.", *(b + i));
 	}
-	cout << endl;
+	std::cout << std::endl;
 }
 #endif

@@ -19,56 +19,33 @@
 #ifndef __ABYPARTY_H__
 #define __ABYPARTY_H__
 
-#include "../ENCRYPTO_utils/typedefs.h"
-#include "../ENCRYPTO_utils/crypto/crypto.h"
 #include "../ABY_utils/ABYconstants.h"
-#include "../circuit/abycircuit.h"
-#include "../ENCRYPTO_utils/socket.h"
-#include "../ENCRYPTO_utils/thread.h"
-#include "../ENCRYPTO_utils/cbitvector.h"
-#include "abysetup.h"
-#include "../sharing/sharing.h"
-#include "../sharing/boolsharing.h"
-#include "../sharing/splut.h"
+#include <ENCRYPTO_utils/timer.h>
+#include <memory>
 #include <vector>
-#include "../ENCRYPTO_utils/timer.h"
-#include "../sharing/yaoclientsharing.h"
-#include "../sharing/yaoserversharing.h"
-#include "../sharing/arithsharing.h"
-#include "../ENCRYPTO_utils/sndthread.h"
-#include "../ENCRYPTO_utils/rcvthread.h"
 
-#include "../ABY_utils/yaokey.h"
-#include "../ENCRYPTO_utils/timer.h"
+#ifdef DEBUGCOMM
+#include <mutex>
+#endif
 
-#include <limits.h>
-#include "../ENCRYPTO_utils/connection.h"
-
-//#define ABYDEBUG
-//#define PRINT_OUTPUT
-//#define DEBUGABYPARTY
-//#define BENCHONLINEPHASE
-//#define PRINT_PERFORMANCE_STATS
-//#define DEBUGCOMM
-
-
-using namespace std; //TODO eventually remove and prefix couts etc with std::
-
-//Send and receive threads for the standard direction (SERVER plays server, CLIENT plays client)
-//and for the inverse direction (SERVER plays client, CLIENT plays server)
-
+class ABYCircuit;
+class ABYSetup;
+class channel;
+struct comm_ctx;
+class crypto;
+class Sharing;
+struct GATE;
+class CEvent;
+class CLock;
 
 class ABYParty {
 public:
-	ABYParty(e_role pid, char* addr = (char*) "127.0.0.1", uint16_t port = 7766, seclvl seclvl = LT, uint32_t bitlen = 32,
+	ABYParty(e_role pid, const char* addr = (char*) "127.0.0.1", uint16_t port = 7766, seclvl seclvl = LT, uint32_t bitlen = 32,
 			uint32_t nthreads =	2, e_mt_gen_alg mg_algo = MT_OT, uint32_t maxgates = 4000000);
 	~ABYParty();
 
-	vector<Sharing*>& GetSharings() {
-		return m_vSharings;
-	}
-	CBitVector ExecCircuit();
-	CBitVector ExecSetupPhase();
+	std::vector<Sharing*>& GetSharings();
+	void ExecCircuit();
 
 	void Reset();
 
@@ -107,7 +84,7 @@ private:
 	ABYSetup* m_pSetup;
 
 	// Network Communication
-	vector<CSocket*> m_vSockets; // sockets for threads
+	std::vector<CSocket*> m_vSockets; // sockets for threads
 	e_role m_eRole; // thread id
 	uint16_t m_nPort;
 	seclvl m_sSecLvl;
@@ -116,7 +93,7 @@ private:
 
 	uint32_t m_nHelperThreads;
 
-	char* m_cAddress;
+	const char* m_cAddress;
 
 	uint32_t m_nDepth;
 
@@ -127,10 +104,7 @@ private:
 
 	uint32_t m_nSizeOfVal;
 
-	// Input values
-	CBitVector m_vInputBits;
-
-	vector<Sharing*> m_vSharings;
+	std::vector<Sharing*> m_vSharings;
 
 	crypto* m_cCrypt;
 	CLock *glock;
@@ -142,33 +116,19 @@ private:
 	comm_ctx* m_tComm;
 
 	channel* m_tPartyChan;
+#ifdef DEBUGCOMM
+	std::mutex cout_mutex;
+#endif
 
-	class CPartyWorkerThread: public CThread {
-	public:
-		CPartyWorkerThread(uint32_t id, ABYParty* callback) :
-				threadid(id), m_pCallback(callback) {
-			m_eJob = e_Party_Undefined;
-		};
-
-		void PutJob(EPartyJobType e) {
-			m_eJob = e;
-			m_evt.Set();
-		}
-
-		void ThreadMain();
-		uint32_t threadid;
-		ABYParty* m_pCallback;
-		CEvent m_evt;
-		EPartyJobType m_eJob;
-	};
+	class CPartyWorkerThread;
 
 	BOOL WakeupWorkerThreads(EPartyJobType);
 	BOOL WaitWorkerThreads();
 	BOOL ThreadNotifyTaskDone(BOOL);
 
-	vector<CPartyWorkerThread*> m_vThreads;
-	CEvent m_evt;
-	CLock m_lock;
+	std::vector<CPartyWorkerThread*> m_vThreads;
+	std::unique_ptr<CEvent> m_evt;
+	std::unique_ptr<CLock> m_lock;
 
 	uint32_t m_nWorkingThreads;
 	BOOL m_bWorkerThreadSuccess;

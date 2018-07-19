@@ -19,8 +19,8 @@
  */
 
 //Utility libs
-#include "../../abycore/ENCRYPTO_utils/crypto/crypto.h"
-#include "../../abycore/ENCRYPTO_utils/parse_options.h"
+#include <ENCRYPTO_utils/crypto/crypto.h>
+#include <ENCRYPTO_utils/parse_options.h>
 //ABY Party class
 #include "../../abycore/aby/abyparty.h"
 
@@ -82,6 +82,8 @@ int main(int argc, char** argv) {
 			&port, &test_op, &prot_version, &verify_output);
 
 	seclvl seclvl = get_sec_lvl(secparam);
+
+	srand(time(0));//(unsigned)time(0));
 
 	test_psi_scs_circuit(role, (char*) address.c_str(), port, seclvl, neles, bitlen, nthreads, mt_alg, prot_version, verify_output);
 

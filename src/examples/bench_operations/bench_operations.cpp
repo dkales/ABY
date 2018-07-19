@@ -17,29 +17,69 @@
  */
 
 //Utility libs
-#include "../../abycore/ENCRYPTO_utils/crypto/crypto.h"
-#include "../../abycore/ENCRYPTO_utils/parse_options.h"
+#include "../../abycore/sharing/sharing.h"
+#include "../../abycore/circuit/booleancircuits.h"
+#include <ENCRYPTO_utils/crypto/crypto.h>
+#include <ENCRYPTO_utils/parse_options.h>
 #include "../aes/common/aescircuit.h"
 //ABY Party class
 #include "../../abycore/aby/abyparty.h"
+#include <cstring>
 
-static const uint32_t m_vBitLens[] = {8, 16, 32, 64};
+static const uint32_t m_vBitLens[] = {1, 8, 16, 32, 64};
 
-static const aby_ops_t m_tBenchOps[] = { { OP_XOR, S_BOOL, "xorbool" }, { OP_AND, S_BOOL, "andbool" }, { OP_ADD, S_BOOL, "addsobool" }, { OP_ADD, S_BOOL, "adddobool" },
-		{ OP_ADD, S_BOOL, "adddovecbool" }, { OP_MUL, S_BOOL, "mulsobool" }, { OP_MUL, S_BOOL, "muldobool" }, { OP_MUL, S_BOOL, "mulsovecbool" }, { OP_MUL, S_BOOL, "muldovecbool" },
-		{ OP_CMP, S_BOOL, "cmpsobool" }, { OP_CMP, S_BOOL, "cmpdobool" }, { OP_EQ, S_BOOL, "eqbool" }, { OP_MUX, S_BOOL, "muxbool" },{ OP_MUX, S_BOOL, "muxvecbool" },
-		{ OP_SBOX, S_BOOL, "sboxsobool" }, { OP_SBOX, S_BOOL, "sboxdobool" }, { OP_SBOX, S_BOOL, "sboxdovecbool" },
-		 {OP_XOR, S_YAO, "xoryao" }, { OP_AND, S_YAO, "andyao" }, { OP_ADD, S_YAO, "addyao" }, { OP_MUL, S_YAO, "mulyao" }, { OP_CMP, S_YAO, "cmpyao" },
-		{ OP_EQ, S_YAO, "eqyao" }, { OP_MUX, S_YAO, "muxyao" },  { OP_SBOX, S_YAO, "sboxsoyao" },{ OP_ADD, S_ARITH, "addarith" }, { OP_MUL, S_ARITH, "mularith" }, { OP_Y2B, S_YAO, "y2b" }, { OP_B2A, S_BOOL, "b2a" },
-		{ OP_B2Y, S_BOOL, "b2y" }, { OP_A2Y, S_ARITH, "a2y" }, { OP_ADD, S_YAO_REV, "addyaoipp" }, { OP_MUL, S_YAO_REV, "mulyaoipp" },
-		{ OP_ADD, S_SPLUT, "addsplut"}, { OP_CMP, S_SPLUT, "cmpsplut"}, { OP_EQ, S_SPLUT, "eqsplut"},	{ OP_SBOX, S_SPLUT, "sboxlut" }};
+static const aby_ops_t m_tBenchOps[] = {
+	{ OP_XOR, S_BOOL, "xorbool" },
+	{ OP_AND, S_BOOL, "andbool" },
+	{ OP_ADD, S_BOOL, "addsobool" },
+	{ OP_ADD, S_BOOL, "adddobool" },
+
+	{ OP_ADD, S_BOOL, "adddovecbool" },
+	{ OP_MUL, S_BOOL, "mulsobool" },
+	{ OP_MUL, S_BOOL, "muldobool" },
+	{ OP_MUL, S_BOOL, "mulsovecbool" },
+	{ OP_MUL, S_BOOL, "muldovecbool" },
+
+	{ OP_CMP, S_BOOL, "cmpsobool" },
+	{ OP_CMP, S_BOOL, "cmpdobool" },
+	{ OP_EQ, S_BOOL, "eqbool" },
+	{ OP_MUX, S_BOOL, "muxbool" },
+	{ OP_MUX, S_BOOL, "muxvecbool" },
+
+	{ OP_SBOX, S_BOOL, "sboxsobool" },
+	{ OP_SBOX, S_BOOL, "sboxdobool" },
+	{ OP_SBOX, S_BOOL, "sboxdovecbool" },
+
+	{ OP_XOR, S_YAO, "xoryao" },
+	{ OP_AND, S_YAO, "andyao" },
+	{ OP_ADD, S_YAO, "addyao" },
+	{ OP_MUL, S_YAO, "mulyao" },
+	{ OP_CMP, S_YAO, "cmpyao" },
+
+	{ OP_EQ, S_YAO, "eqyao" },
+	{ OP_MUX, S_YAO, "muxyao" },
+	{ OP_SBOX, S_YAO, "sboxsoyao" },
+	{ OP_ADD, S_ARITH, "addarith" },
+	{ OP_MUL, S_ARITH, "mularith" },
+	{ OP_Y2B, S_YAO, "y2b" },
+	{ OP_B2A, S_BOOL, "b2a" },
+
+	{ OP_B2Y, S_BOOL, "b2y" },
+	{ OP_A2Y, S_ARITH, "a2y" },
+	{ OP_ADD, S_YAO_REV, "addyaoipp" },
+	{ OP_MUL, S_YAO_REV, "mulyaoipp" },
+
+	{ OP_ADD, S_SPLUT, "addsplut"},
+	{ OP_CMP, S_SPLUT, "cmpsplut"},
+	{ OP_EQ, S_SPLUT, "eqsplut"},
+	{ OP_SBOX, S_SPLUT, "sboxlut" }
+};
 
 int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, int32_t* bitlen, uint32_t* secparam,
-		string* address, uint16_t* port, int32_t* operation, bool* verbose, uint32_t* nops, uint32_t* nruns,
+		std::string* address, uint16_t* port, int32_t* operation, bool* numbers_only, uint32_t* nops, uint32_t* nruns,
 		uint32_t* threads, bool* no_verify, bool* detailed) {
 
 	uint32_t int_role = 0, int_port = 0;
-	bool useffc = false;
 	bool oplist = false;
 	bool success = false;
 
@@ -51,7 +91,7 @@ int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, int32_t* 
 			{ (void*) &int_port, T_NUM, "p", "Port, default: 7766",	false, false },
 			{ (void*) operation, T_NUM, "o", "Test operation with id (leave out for all operations; for list of IDs use -l), default: all", false, false },
 			{ (void*) nruns, T_NUM, "i", "Number of iterations of tests, default: 1",	false, false },
-			{ (void*) verbose, T_FLAG, "v", "Verbose (silent benchmarks, only timings), default: off",	false, false },
+			{ (void*) numbers_only, T_FLAG, "v", "Omit detailed description, print numbers only (default: false)",	false, false },
 			{ (void*) &oplist, T_FLAG, "l", "List the IDs of operations",	false, false },
 			{ (void*) no_verify, T_FLAG, "t", "No output verification (default: false)",	false, false },
 			{ (void*) detailed, T_FLAG, "d", "Give detailed online/setup time and communication (default: false)",	false, false },
@@ -62,16 +102,16 @@ int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, int32_t* 
 	success = parse_options(argcp, argvp, options, sizeof(options) / sizeof(parsing_ctx));
 
 	if(oplist) {
-		cout << "Operations with IDs: " << endl;
+		std::cout << "Operations with IDs: " << std::endl;
 		for(uint32_t i = 0; i < sizeof(m_tBenchOps)/sizeof(aby_ops_t); i++) {
-			cout << "Operation " << i << ": " << m_tBenchOps[i].opname << endl;
+			std::cout << "Operation " << i << ": " << m_tBenchOps[i].opname << std::endl;
 		}
 		exit(0);
 	}
 
 	if (!success) {
 		print_usage(*argvp[0], options, sizeof(options) / sizeof(parsing_ctx));
-		cout << "Exiting" << endl;
+		std::cout << "Exiting" << std::endl;
 		exit(0);
 	}
 
@@ -90,23 +130,18 @@ int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, int32_t* 
 
 
 
-
 int32_t bench_operations(aby_ops_t* bench_ops, uint32_t nops, ABYParty* party, uint32_t* bitlens,
-		uint32_t nbitlens, uint32_t nvals, uint32_t nruns, e_role role, uint32_t symsecbits, bool verbose,
+		uint32_t nbitlens, uint32_t nvals, uint32_t nruns, e_role role, uint32_t symsecbits, bool numbers_only,
 		bool no_verify,	bool detailed) {
 	uint64_t *avec, *bvec, *cvec, *verifyvec, typebitmask = 0;
 	uint32_t tmpbitlen, tmpnvals;
-	uint8_t *sa, *sb;
-	share *shra, *shrb, *shrres, *shrout, *shrsel, *shr_out_a, *shr_out_b;
+	share *shra, *shrb, *shrres, *shrout, *shrsel;
 	//Shares for Yao IPP
 	share *shray, *shrayr, *shrby, *shrbyr, *shrresy, *shrresyr, *shrouty, *shroutyr;
-	vector<Sharing*>& sharings = party->GetSharings();
+	std::vector<Sharing*>& sharings = party->GetSharings();
 	Circuit *bc, *yc, *ac, *ycr;
 	double op_time, o_time, s_time, o_comm, s_comm;
 	uint32_t non_linears, depth, ynvals, yrnvals;
-
-	uint8_t *buf_shrd_out_a, *buf_shrd_out_b;
-	yao_fields *yao_shrd_out_a, *yao_shrd_out_b;
 
 	avec = (uint64_t*) malloc(nvals * sizeof(uint64_t));
 	bvec = (uint64_t*) malloc(nvals * sizeof(uint64_t));
@@ -128,28 +163,33 @@ int32_t bench_operations(aby_ops_t* bench_ops, uint32_t nops, ABYParty* party, u
 		buf_pos_odd[i] = 2*i+1;
 	}
 
-	if (!verbose) {
-		cout << "Base OTs:\t";
-		cout << party->GetTiming(P_BASE_OT) << endl;
-	}
+	if (!numbers_only) {
 
-	if (!verbose) {
-		cout << "Op\t";
-		for(uint32_t b = 0; b < nbitlens; b++) {
-			cout << bitlens[b] << "-bit \t";
-		}
+		std::cout << "Base OTs:\t";
+		std::cout << party->GetTiming(P_BASE_OT) << std::endl;
 
-		cout << endl;
-		if(detailed) {
-			cout << "Setup Time [ms] / Online Time [ms] / Setup Comm [Byte] / Online Comm [Byte] / Non-Linear Ops" << endl;
+		std::cout << "Op\t";
+		if (!detailed) {
+			for (uint32_t b = 0; b < nbitlens; b++) {
+				std::cout << bitlens[b] << "-bit \t";
+			}
+			std::cout << std::endl;
 		}
-		cout << "-----------------------------------------------" << endl;
+		else {
+			std::cout << "Setup Time [ms] / Online Time [ms] / Setup Comm [Byte] / Online Comm [Byte] / Non-Linear Ops" << std::endl;
+		}
+		std::cout << "-----------------------------------------------" << std::endl;
 	}
 
 	for (uint32_t i = 0; i < nops; i++) {
-		if (!verbose) {
-			cout << bench_ops[i].opname << "\t";
+		if (!numbers_only) {
+			std::cout << bench_ops[i].opname << "\t";
 		}
+
+		if(detailed){
+			std::cout << std::endl;
+		}
+
 		for (uint32_t b = 0; b < nbitlens; b++) {
 			uint32_t bitlen = bitlens[b];
 			op_time = 0;
@@ -161,9 +201,6 @@ int32_t bench_operations(aby_ops_t* bench_ops, uint32_t nops, ABYParty* party, u
 
 			typebitmask = 0;
 
-			sa = (uint8_t*) malloc(max(nvals, bitlen));
-			sb = (uint8_t*) malloc(max(nvals, bitlen));
-
 			if(PadToMultiple(bitlen, 8) != bitlen) {
 				typebitmask = (1<<bitlen)-1;
 			} else {
@@ -172,6 +209,7 @@ int32_t bench_operations(aby_ops_t* bench_ops, uint32_t nops, ABYParty* party, u
 
 
 			for (uint32_t r = 0; r < nruns; r++) {
+
 				Circuit* circ = sharings[bench_ops[i].sharing]->GetCircuitBuildRoutine();
 
 				for (uint32_t j = 0; j < nvals; j++) {
@@ -190,7 +228,7 @@ int32_t bench_operations(aby_ops_t* bench_ops, uint32_t nops, ABYParty* party, u
 
 					if(yrnvals > 0) {
 						shrayr = ycr->PutSIMDINGate(yrnvals, avec+ynvals, bitlen, CLIENT);
-						shrbyr = ycr->PutSIMDINGate(yrnvals,  bvec+ynvals, bitlen, SERVER);
+						shrbyr = ycr->PutSIMDINGate(yrnvals, bvec+ynvals, bitlen, SERVER);
 						shrayr->set_max_bitlength(bitlen);
 						shrbyr->set_max_bitlength(bitlen);
 					}
@@ -226,7 +264,7 @@ int32_t bench_operations(aby_ops_t* bench_ops, uint32_t nops, ABYParty* party, u
 					break;
 				case OP_MUL:
 					if(nvals > 1000 && bench_ops[i].sharing == S_YAO) {
-						cout << "Yao multiplication ignored due to high memory requirement!\t";
+						std::cout << "Yao multiplication ignored due to high memory requirement!\t";
 						shrres = shra; //Do nothing since memory footprint is too high
 						for (uint32_t j = 0; j < nvals; j++)
 							verifyvec[j] = avec[j];
@@ -320,10 +358,11 @@ int32_t bench_operations(aby_ops_t* bench_ops, uint32_t nops, ABYParty* party, u
 						verifyvec[j] = (avec[j] + bvec[j]) & typebitmask;
 					break;
 				case OP_SBOX:
-					shrsel = new boolshare(8, circ);
-					for(uint32_t j = 0; j < 8; j++) {
-						shrsel->set_wire_id(j, shra->get_wire_id(j));
-					}
+					if (bitlen >= 8) {
+						shrsel = new boolshare(8, circ);
+						for (uint32_t j = 0; j < 8; j++) {
+							shrsel->set_wire_id(j, shra->get_wire_id(j));
+						}
 
 					if(bench_ops[i].opname.compare("sboxsobool") == 0) {
 						shrres = new boolshare(AESSBox_Forward_BP_Size_Optimized(shrsel->get_wires(), (BooleanCircuit*) circ), circ);
@@ -332,9 +371,16 @@ int32_t bench_operations(aby_ops_t* bench_ops, uint32_t nops, ABYParty* party, u
 					} else {
 						shrres = new boolshare(PutAESSBoxGate(shrsel->get_wires(), (BooleanCircuit*) circ, false), circ);
 					}
-
-					for (uint32_t j = 0; j < nvals; j++)
-						verifyvec[j] = (uint64_t) plaintext_aes_sbox[avec[j] & 0xFF]; //(avec[j] + bvec[j]) & typebitmask;
+						for (uint32_t j = 0; j < nvals; j++)
+							verifyvec[j] = (uint64_t) plaintext_aes_sbox[avec[j] & 0xFF]; //(avec[j] + bvec[j]) & typebitmask;
+					}
+					else{
+						std::cout << "AES only works with bitlen >= 8!\t";
+						shrres = shra;
+						for (uint32_t j = 0; j < nvals; j++){
+							verifyvec[j] = avec[j];
+						}
+					}
 					break;
 				default:
 					shrres = circ->PutADDGate(shra, shrb);
@@ -354,7 +400,7 @@ int32_t bench_operations(aby_ops_t* bench_ops, uint32_t nops, ABYParty* party, u
 
 				party->ExecCircuit();
 
-				//cout << "Size of output: " << shrout->size() << endl;
+				//std::cout << "Size of output: " << shrout->size() << std::endl;
 				if(bench_ops[i].sharing == S_YAO_REV) {
 					uint32_t tmpyrnvals;
 					cvec = (uint64_t*) malloc(sizeof(uint64_t*) * nvals);
@@ -382,39 +428,42 @@ int32_t bench_operations(aby_ops_t* bench_ops, uint32_t nops, ABYParty* party, u
 				depth += sharings[bench_ops[i].sharing]->GetMaxCommunicationRounds();
 
 				if(detailed) {
-					cout << party->GetTiming(P_SETUP) << "\t" << party->GetTiming(P_ONLINE) << "\t" << party->GetSentData(P_SETUP)+party->GetReceivedData(P_SETUP)
-							<< "\t" << party->GetSentData(P_ONLINE)+party->GetReceivedData(P_ONLINE) << "\t" << sharings[bench_ops[i].sharing]->GetNumNonLinearOperations()
-							<< "\t" << sharings[bench_ops[i].sharing]->GetMaxCommunicationRounds() << endl;
+					std::cout << bitlen <<"\t"
+						<< party->GetTiming(P_SETUP) << "\t"
+						<< party->GetTiming(P_ONLINE) << "\t"
+						<< party->GetSentData(P_SETUP)+party->GetReceivedData(P_SETUP) << "\t"
+						<< party->GetSentData(P_ONLINE)+party->GetReceivedData(P_ONLINE) << "\t"
+						<< sharings[bench_ops[i].sharing]->GetNumNonLinearOperations() << "\t"
+						<< sharings[bench_ops[i].sharing]->GetMaxCommunicationRounds() << std::endl;
 				}
 
 				party->Reset();
 
 
 				if(!no_verify) {
-					//cout << "Running verification" << endl;
+					//std::cout << "Running verification" << std::endl;
 					assert(tmpnvals == nvals);
 
 					for (uint32_t j = 0; j < nvals; j++) {
 						if(verifyvec[j] != (cvec[j]&typebitmask)) {
-							cout << "Error: " << endl;
-							cout << "\t" << get_role_name(role) << " " << bench_ops[i].opname << ": values[" << j <<
+							std::cout << "Error: " << std::endl;
+							std::cout << "\t" << get_role_name(role) << " " << bench_ops[i].opname << ": values[" << j <<
 							"]: a = " << avec[j] <<	", b = " << bvec[j] << ", c = " << (cvec[j]&typebitmask) << ", verify = " <<
-							verifyvec[j] << endl;
+							verifyvec[j] << std::endl;
 
 							assert(verifyvec[j] == (cvec[j]&typebitmask));
 						}
 					}
-					//cout << "Verification succeeded" << endl;
+					//std::cout << "Verification succeeded" << std::endl;
 				}
-			}
-			free(sa);
-			free(sb);
+			} // nruns
+
 			if(!detailed) {
-				cout << op_time/nruns << "\t";
+				std::cout << op_time/nruns << "\t";
 			}
 		}
 		if(!detailed)
-			cout << endl;
+			std::cout << std::endl;
 
 	}
 
@@ -430,12 +479,11 @@ int32_t bench_operations(aby_ops_t* bench_ops, uint32_t nops, ABYParty* party, u
 
 
 bool run_bench(e_role role, char* address, uint16_t port, seclvl seclvl, int32_t operation, int32_t bitlen, uint32_t nvals,
-		uint32_t nruns, e_mt_gen_alg mt_alg, uint32_t nthreads, bool verbose, bool no_verify, bool detailed) {
+		uint32_t nruns, e_mt_gen_alg mt_alg, uint32_t nthreads, bool numbers_only, bool no_verify, bool detailed) {
 
 	uint32_t nops, nbitlens;
-	uint64_t seed = 0xAAAAAAAAAAAAAAAA;
-
-	UGATE_T val;
+	//uint64_t seed = 0xAAAAAAAAAAAAAAAA;
+	uint64_t seed = time(NULL);
 
 	aby_ops_t* op;
 
@@ -444,7 +492,7 @@ bool run_bench(e_role role, char* address, uint16_t port, seclvl seclvl, int32_t
 
 	if (operation > -1) {
 		op = new aby_ops_t;
-		assert(operation < sizeof(m_tBenchOps) / sizeof(aby_ops_t));
+		assert(operation < (int) (sizeof(m_tBenchOps) / sizeof(aby_ops_t)));
 		op->op = m_tBenchOps[operation].op;
 		op->opname = m_tBenchOps[operation].opname;
 		op->sharing = m_tBenchOps[operation].sharing;
@@ -471,7 +519,7 @@ bool run_bench(e_role role, char* address, uint16_t port, seclvl seclvl, int32_t
 
 	srand(seed);
 
-	bench_operations(op, nops, party, bitlens, nbitlens, nvals, nruns, role, seclvl.symbits, verbose, no_verify, detailed);
+	bench_operations(op, nops, party, bitlens, nbitlens, nvals, nruns, role, seclvl.symbits, numbers_only, no_verify, detailed);
 
 	delete party;
 
@@ -484,19 +532,19 @@ int main(int argc, char** argv) {
 	e_role role;
 	uint32_t secparam = 128, nvals = 1, nruns = 1;
 	uint16_t port = 7766;
-	string address = "127.0.0.1";
+	std::string address = "127.0.0.1";
 	int32_t operation = -1, bitlen = -1;
-	bool verbose = false;
+	bool numbers_only = false;
 	bool no_verify = false;
 	bool detailed = false;
 	uint32_t nthreads = 1;
 	e_mt_gen_alg mt_alg = MT_OT;
 
-	read_test_options(&argc, &argv, &role, &bitlen, &secparam, &address, &port, &operation, &verbose, &nvals, &nruns, &nthreads, &no_verify, &detailed);
+	read_test_options(&argc, &argv, &role, &bitlen, &secparam, &address, &port, &operation, &numbers_only, &nvals, &nruns, &nthreads, &no_verify, &detailed);
 
 	seclvl seclvl = get_sec_lvl(secparam);
 
-	run_bench(role, (char*) address.c_str(), port, seclvl, operation, bitlen, nvals, nruns, mt_alg, nthreads, verbose, no_verify, detailed);
+	run_bench(role, (char*) address.c_str(), port, seclvl, operation, bitlen, nvals, nruns, mt_alg, nthreads, numbers_only, no_verify, detailed);
 
 	return 0;
 }

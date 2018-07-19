@@ -21,16 +21,18 @@
 #ifndef __SHARING_H__
 #define __SHARING_H__
 
-//#include "../circuit/circuit.h"
-#include "../circuit/abycircuit.h"
-#include "../circuit/circuit.h"
-#include "../ENCRYPTO_utils/cbitvector.h"
-#include "../aby/abysetup.h"
-#include "../ENCRYPTO_utils/constants.h"
-#include "../ENCRYPTO_utils/crypto/crypto.h"
-#include "../ENCRYPTO_utils/fileops.h"
-#include <assert.h>
+#include <ENCRYPTO_utils/cbitvector.h>
+#include "../ABY_utils/ABYconstants.h"
+#include <cstdint>
+#include <vector>
 //#define DEBUGSHARING
+
+class ABYCircuit;
+class ABYSetup;
+class Circuit;
+class crypto;
+struct GATE;
+struct UGATE;
 
 
 /**
@@ -46,25 +48,12 @@ public:
 
 	 \brief 		Initialises the members of the class.
 	 */
-	Sharing(e_sharing context, e_role role, uint32_t sharebitlen, ABYCircuit* circuit, crypto* crypt) {
-		m_eContext = context;
-		m_nShareBitLen = sharebitlen;
-		m_pCircuit = circuit;
-		m_pGates = m_pCircuit->Gates();
-		m_eRole = role;
-		m_cCrypto = crypt;
-		m_nSecParamBytes = ceil_divide(m_cCrypto->get_seclvl().symbits, 8);
-		m_ePhaseValue = ePreCompDefault;
-		m_nFilePos = -1;
-		m_nTypeBitLen = sharebitlen;
-	}
-	;
+	Sharing(e_sharing context, e_role role, uint32_t sharebitlen, ABYCircuit* circuit, crypto* crypt);
+
 	/**
 	 Destructor of class.
 	 */
-	virtual ~Sharing() {
-	}
-	;
+	virtual ~Sharing();
 
 	/**	Reset method */
 	virtual void Reset() = 0;
@@ -119,13 +108,13 @@ public:
 	 \param 	sendbuf 	sender buffer
 	 \param 	bytesize	data size
 	 */
-	virtual void GetDataToSend(vector<BYTE*>& sendbuf, vector<uint64_t>& bytesize) = 0;
+	virtual void GetDataToSend(std::vector<BYTE*>& sendbuf, std::vector<uint64_t>& bytesize) = 0;
 	/**
 	 Method for receiving the data.
 	 \param 	rsvbuf 		receiver buffer
 	 \param 	rcvsize		data size
 	 */
-	virtual void GetBuffersToReceive(vector<BYTE*>& rcvbuf, vector<uint64_t>& rcvbytes) = 0;
+	virtual void GetBuffersToReceive(std::vector<BYTE*>& rcvbuf, std::vector<uint64_t>& rcvbytes) = 0;
 	/**
 	 Method for Instantiating a gate
 	 \param gate 		Input gate

@@ -32,62 +32,66 @@ int main(int argc, char** argv) {
 	uint16_t port = 7766;
 	string address = "127.0.0.1";
 	bool verbose = false;
+	bool randomseed = false;
 	int32_t test_op = -1;
 	e_mt_gen_alg mt_alg = MT_OT;
 	double epsilon = 1.2;
-	uint32_t num_test_runs = 5;
+	uint32_t num_test_runs = 2;
 
-	read_test_options(&argc, &argv, &role, &bitlen, &nvals, &secparam, &address, &port, &test_op, &num_test_runs, &mt_alg, &verbose);
+	read_test_options(&argc, &argv, &role, &bitlen, &nvals, &secparam, &address, &port, &test_op, &num_test_runs, &mt_alg, &verbose, &randomseed);
 
 	seclvl seclvl = get_sec_lvl(secparam);
 
-	run_tests(role, (char*) address.c_str(), port, seclvl, bitlen, nvals, nthreads, mt_alg, test_op, num_test_runs, verbose);
+	run_tests(role, (char*) address.c_str(), port, seclvl, bitlen, nvals, nthreads, mt_alg, test_op, num_test_runs, verbose, randomseed);
 
-	//Test the AES circuit
-	cout << "Testing AES circuit in Boolean sharing" << endl;
-	test_aes_circuit(role, (char*) address.c_str(), port, seclvl, nvals, nthreads, mt_alg, S_BOOL);
-	cout << "Testing AES circuit in Yao sharing" << endl;
-	test_aes_circuit(role, (char*) address.c_str(), port, seclvl, nvals, nthreads, mt_alg, S_YAO);
-	cout << "Testing AES circuit in Setup-LUT sharing" << endl;
-	test_aes_circuit(role, (char*) address.c_str(), port, seclvl, nvals, nthreads, mt_alg, S_SPLUT);
+	if (test_op == -1) {
+		//Test the AES circuit
+		cout << "Testing AES circuit in Boolean sharing" << endl;
+		test_aes_circuit(role, (char*) address.c_str(), port, seclvl, nvals, nthreads, mt_alg, S_BOOL);
+		cout << "Testing AES circuit in Yao sharing" << endl;
+		test_aes_circuit(role, (char*) address.c_str(), port, seclvl, nvals, nthreads, mt_alg, S_YAO);
+		//	cout << "Testing AES circuit in Setup-LUT sharing" << endl;
+		//	test_aes_circuit(role, (char*) address.c_str(), port, seclvl, nvals, nthreads, mt_alg, S_SPLUT);
 
-	//Test the SHA1 circuit TODO: Constant gates are limited to nvals < 64. Fix!
-	cout << "Testing SHA1 circuit in Boolean sharing" << endl;
-	test_sha1_circuit(role, (char*) address.c_str(), port, seclvl, 63, nthreads, mt_alg, S_BOOL);
-	cout << "Testing SHA1 circuit in Yao sharing" << endl;
-	test_sha1_circuit(role, (char*) address.c_str(), port, seclvl, 63, nthreads, mt_alg, S_YAO);
-	//cout << "Testing SHA1 circuit in Setup-LUT sharing" << endl;
-	//test_sha1_circuit(role, (char*) address.c_str(), seclvl, 63, nthreads, mt_alg, S_SPLUT);
+		//Test the SHA1 circuit TODO: Constant gates are limited to nvals < 64. Fix!
+		cout << "Testing SHA1 circuit in Boolean sharing" << endl;
+		test_sha1_circuit(role, (char*) address.c_str(), port, seclvl, 63, nthreads, mt_alg, S_BOOL);
+		cout << "Testing SHA1 circuit in Yao sharing" << endl;
+		test_sha1_circuit(role, (char*) address.c_str(), port, seclvl, 63, nthreads, mt_alg, S_YAO);
+		//cout << "Testing SHA1 circuit in Setup-LUT sharing" << endl;
+		//test_sha1_circuit(role, (char*) address.c_str(), seclvl, 63, nthreads, mt_alg, S_SPLUT);
 
-	//Test the Sort-Compare-Shuffle PSI circuit
-	cout << "Testing SCS PSI circuit in Boolean sharing" << endl;
-	test_psi_scs_circuit(role, (char*) address.c_str(), port, seclvl, nelements, bitlen,	nthreads, mt_alg, 0, true);
-	cout << "Testing SCS PSI circuit in Yao sharing" << endl;
-	test_psi_scs_circuit(role, (char*) address.c_str(), port, seclvl, nelements, bitlen,	nthreads, mt_alg, 1, true);
-	//cout << "Testing SCS PSI circuit in Setup-LUT sharing" << endl;
-	//test_psi_scs_circuit(role, (char*) address.c_str(), seclvl, nelements, bitlen,	nthreads, mt_alg, S_SPLUT);
+		//Test the Sort-Compare-Shuffle PSI circuit
+		cout << "Testing SCS PSI circuit in Boolean sharing" << endl;
+		test_psi_scs_circuit(role, (char*) address.c_str(), port, seclvl, nelements, bitlen, nthreads, mt_alg, 0, true);
+		cout << "Testing SCS PSI circuit in Yao sharing" << endl;
+		test_psi_scs_circuit(role, (char*) address.c_str(), port, seclvl, nelements, bitlen, nthreads, mt_alg, 1, true);
+		//cout << "Testing SCS PSI circuit in Setup-LUT sharing" << endl;
+		//test_psi_scs_circuit(role, (char*) address.c_str(), seclvl, nelements, bitlen,	nthreads, mt_alg, S_SPLUT);
+
+		//Test the Phasing PSI circuit
+		// cout << "Testing PSI Phasing circuit in Boolean sharing" << endl;
+		// test_phasing_circuit(role, (char*) address.c_str(), port, seclvl, nelements, nelements, bitlen, epsilon, nthreads, mt_alg,
+		// 		S_BOOL, 1, 0, 3);
+		// cout << "Testing PSI Phasing circuit in Yao sharing" << endl;
+		// test_phasing_circuit(role, (char*) address.c_str(), port, seclvl, nelements, nelements, bitlen, epsilon, nthreads, mt_alg,
+		// 		S_YAO, 1, 0, 3);
+		//	cout << "Testing PSI Phasing circuit in Setup-LUT sharing" << endl;
+		//	test_phasing_circuit(role, (char*) address.c_str(), port, seclvl, nelements, nelements, bitlen,	epsilon, nthreads, mt_alg, S_SPLUT, 1, 0, 3);
+
+		//test_lowmc_circuit(role, (char*) address.c_str(), seclvl, nvals, nthreads, mt_alg, S_BOOL, (LowMCParams*) &stp);
+
+		//test_min_eucliden_dist_circuit(role, (char*) address.c_str(), seclvl, nvals, 6, nthreads, mt_alg, S_ARITH, S_YAO);
+	}
 
 
-	//Test the Phasing PSI circuit
-	cout << "Testing PSI Phasing circuit in Boolean sharing" << endl;
-	test_phasing_circuit(role, (char*) address.c_str(), port, seclvl, nelements, nelements, bitlen,	epsilon, nthreads, mt_alg, S_BOOL, 1, 0, 3);
-	cout << "Testing PSI Phasing circuit in Yao sharing" << endl;
-	test_phasing_circuit(role, (char*) address.c_str(), port, seclvl, nelements, nelements, bitlen,	epsilon, nthreads, mt_alg, S_YAO, 1, 0, 3);
-	cout << "Testing PSI Phasing circuit in Setup-LUT sharing" << endl;
-	test_phasing_circuit(role, (char*) address.c_str(), port, seclvl, nelements, nelements, bitlen,	epsilon, nthreads, mt_alg, S_SPLUT, 1, 0, 3);
-
-
-	//test_lowmc_circuit(role, (char*) address.c_str(), seclvl, nvals, nthreads, mt_alg, S_BOOL, (LowMCParams*) &stp);
-
-	//test_min_eucliden_dist_circuit(role, (char*) address.c_str(), seclvl, nvals, 6, nthreads, mt_alg, S_ARITH, S_YAO);
-
-	cout << "All tests successfully passed" << endl;
+	cout << "All tests successfully passed." << endl;
 
 	return 0;
 }
 
 bool run_tests(e_role role, char* address, uint16_t port, seclvl seclvl, uint32_t bitlen, uint32_t nvals, uint32_t nthreads,
-		e_mt_gen_alg mt_alg, int32_t test_op, uint32_t num_test_runs, bool verbose) {
+		e_mt_gen_alg mt_alg, int32_t test_op, uint32_t num_test_runs, bool verbose, bool randomseed) {
 	ABYParty* party = new ABYParty(role, address, port, seclvl, bitlen, nthreads, mt_alg);
 
 	uint32_t nops;
@@ -109,14 +113,21 @@ bool run_tests(e_role role, char* address, uint16_t port, seclvl seclvl, uint32_
 		nops = sizeof(m_tAllOps) / sizeof(aby_ops_t);
 	}
 
-	//uint64_t seed = 0xAAAAAAAAAAAAAAAA;
-	//srand(seed);
-	srand(time(NULL));
+	if (randomseed) {
+		//uses current second as seed. not very secure, but random values for every run
+		srand(time(NULL));
+	} else {
+		//uses fixed seed, so two distinct machines will end up with the same randomness, so tests can be verified.
+		uint64_t seed = 0xC0FFEE23DEADBEEF;
+		srand(seed);
+	}
 
 	test_standard_ops(test_ops, party, bitlen, num_test_runs, nops, role, verbose);
 	test_vector_ops(test_ops, party, bitlen, nvals, num_test_runs, nops, role, verbose);
 
 	delete party;
+	if (test_ops != m_tAllOps)
+		delete test_ops;
 
 	return true;
 }
@@ -267,7 +278,7 @@ int32_t test_vector_ops(aby_ops_t* test_ops, ABYParty* party, uint32_t bitlen, u
 
 	avec = (uint32_t*) malloc(nvals * sizeof(uint32_t));
 	bvec = (uint32_t*) malloc(nvals * sizeof(uint32_t));
-	cvec = (uint32_t*) malloc(nvals * sizeof(uint32_t));
+	cvec = nullptr;
 
 	verifyvec = (uint32_t*) malloc(nvals * sizeof(uint32_t));
 
@@ -449,6 +460,8 @@ int32_t test_vector_ops(aby_ops_t* test_ops, ABYParty* party, uint32_t bitlen, u
 			party->ExecCircuit();
 
 			//cout << "Size of output: " << shrout->size() << endl;
+
+			// this allocates buffer put into cvec with calloc
 			shrout->get_clear_value_vec(&cvec, &tmpbitlen, &tmpnvals);
 			assert(tmpnvals == nvals);
 			party->Reset();
@@ -459,32 +472,39 @@ int32_t test_vector_ops(aby_ops_t* test_ops, ABYParty* party, uint32_t bitlen, u
 					verifyvec[j] << endl;
 				assert(verifyvec[j] == cvec[j]);
 			}
+			free(cvec);
 		}
 	}
 
-	/*free(avec);
-	free(bvec);
-	free(cvec);
-	free(verifyvec);
 	free(sa);
-	free(sb);*/
+	free(sb);
+	free(avec);
+	free(bvec);
+	free(verifyvec);
 
 	return 1;
 
 }
 
 int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, uint32_t* bitlen, uint32_t* nvals, uint32_t* secparam,
-		string* address, uint16_t* port, int32_t* test_op, uint32_t* num_test_runs, e_mt_gen_alg *mt_alg, bool* verbose) {
+		string* address, uint16_t* port, int32_t* test_op, uint32_t* num_test_runs, e_mt_gen_alg *mt_alg, bool* verbose, bool* randomseed) {
 
 	uint32_t int_role = 0, int_port = 0, int_mtalg = 0;
 	bool useffc = false;
 
-	parsing_ctx options[] = { { (void*) &int_role, T_NUM, "r", "Role: 0/1", true, false }, { (void*) nvals, T_NUM, "n", "Number of parallel operations elements", false, false }, {
-			(void*) bitlen, T_NUM, "b", "Bit-length, default 32", false, false }, { (void*) secparam, T_NUM, "s", "Symmetric Security Bits, default: 128", false, false }, {
-			(void*) address, T_STR, "a", "IP-address, default: localhost", false, false }, { (void*) &int_port, T_NUM, "p", "Port, default: 7766", false, false }, {
-			(void*) test_op, T_NUM, "t", "Single test (leave out for all operations), default: off", false, false }, { (void*) verbose, T_FLAG, "v",
-			"Do not print computation results, default: off", false, false }, {(void*) num_test_runs, T_NUM, "i", "Number of test runs for operation tests, default: 5",
-					false, false }, { (void*) &int_mtalg, T_NUM, "m", "Arithmetic MT gen algo [0: OT, 1: Paillier, 2: DGK], default: 0", false, false } };
+	parsing_ctx options[] = {
+	{ (void*) &int_role, T_NUM, "r", "Role: 0/1", true, false },
+	{ (void*) nvals, T_NUM, "n", "Number of parallel operations elements", false, false },
+	{ (void*) bitlen, T_NUM, "b", "Bit-length, default 32", false, false },
+	{ (void*) secparam, T_NUM, "s", "Symmetric Security Bits, default: 128", false, false },
+	{ (void*) address, T_STR, "a", "IP-address, default: localhost", false, false },
+	{ (void*) &int_port, T_NUM, "p", "Port, default: 7766", false, false },
+	{ (void*) test_op, T_NUM, "t", "Single test (leave out for all operations), default: off", false, false },
+	{ (void*) verbose, T_FLAG, "v", "Do not print computation results, default: off", false, false },
+	{ (void*) randomseed, T_FLAG, "R", "Use random seed (likely breaks verification when not on localhost), default: off", false, false },
+	{ (void*) num_test_runs, T_NUM, "i", "Number of test runs for operation tests, default: 5", false, false },
+	{ (void*) &int_mtalg, T_NUM, "m", "Arithmetic MT gen algo [0: OT, 1: Paillier, 2: DGK], default: 0", false, false }
+	};
 
 	if (!parse_options(argcp, argvp, options, sizeof(options) / sizeof(parsing_ctx))) {
 		print_usage(*argvp[0], options, sizeof(options) / sizeof(parsing_ctx));

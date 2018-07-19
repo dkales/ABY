@@ -17,6 +17,7 @@
  */
 
 #include "innerproduct.h"
+#include "../../../abycore/sharing/sharing.h"
 
 int32_t test_inner_product_circuit(e_role role, char* address, uint16_t port, seclvl seclvl,
 		uint32_t nvals, uint32_t bitlen, uint32_t nthreads, e_mt_gen_alg mt_alg,
@@ -33,7 +34,7 @@ int32_t test_inner_product_circuit(e_role role, char* address, uint16_t port, se
 	/**
 	 Step 2: Get to know all the sharing types available in the program.
 	 */
-	vector<Sharing*>& sharings = party->GetSharings();
+	std::vector<Sharing*>& sharings = party->GetSharings();
 
 	/**
 	 Step 3: Create the circuit object on the basis of the sharing type
@@ -110,8 +111,8 @@ int32_t test_inner_product_circuit(e_role role, char* address, uint16_t port, se
 	 */
 	output = s_out->get_clear_value<uint16_t>();
 
-	cout << "\nCircuit Result: " << output;
-	cout << "\nVerification Result: " << v_sum << endl;
+	std::cout << "\nCircuit Result: " << output;
+	std::cout << "\nVerification Result: " << v_sum << std::endl;
 
 	delete s_x_vec;
 	delete s_y_vec;

@@ -63,8 +63,8 @@ public:
 
 	void InstantiateGate(GATE* gate);
 
-	void GetDataToSend(vector<BYTE*>& sendbuf, vector<uint64_t>& bytesize);
-	void GetBuffersToReceive(vector<BYTE*>& rcvbuf, vector<uint64_t>& rcvbytes);
+	void GetDataToSend(std::vector<BYTE*>& sendbuf, std::vector<uint64_t>& bytesize);
+	void GetBuffersToReceive(std::vector<BYTE*>& rcvbuf, std::vector<uint64_t>& rcvbytes);
 
 	uint32_t AssignInput(CBitVector& input);
 	uint32_t GetOutput(CBitVector& out);
@@ -118,12 +118,12 @@ private:
 
 	uint64_t m_nTypeBitMask;
 
-	vector<uint32_t> m_vMTStartIdx;
-	vector<uint32_t> m_vMTIdx;
-	vector<GATE*> m_vMULGates;
-	vector<GATE*> m_vInputShareGates;
-	vector<GATE*> m_vOutputShareGates;
-	vector<GATE*> m_vCONVGates;
+        std::vector<uint32_t> m_vMTStartIdx;
+        std::vector<uint32_t> m_vMTIdx;
+        std::vector<GATE*> m_vMULGates;
+        std::vector<GATE*> m_vInputShareGates;
+        std::vector<GATE*> m_vOutputShareGates;
+        std::vector<GATE*> m_vCONVGates;
 
 	uint32_t m_nInputShareSndCtr;
 	uint32_t m_nOutputShareSndCtr;
@@ -131,16 +131,16 @@ private:
 	uint32_t m_nInputShareRcvCtr;
 	uint32_t m_nOutputShareRcvCtr;
 
-	vector<CBitVector> m_vA; //Dim 1 for all pairs of sender / receiver, Dim 2 for MTs of different bitlengths as sender / receiver
-	vector<CBitVector> m_vB; //value B of a multiplication triple
-	vector<CBitVector> m_vS; // temporary value for the computation of the multiplication triples
-	vector<CBitVector> m_vC; // value C of a multiplication triple
-	vector<CBitVector> m_vD_snd; //Stores the D values (x ^ a) between an input and the multiplication value a
-	vector<CBitVector> m_vE_snd; //Stores the E values (y ^ b) between the other input and the multiplication value b
-	vector<CBitVector> m_vD_rcv;
-	vector<CBitVector> m_vE_rcv;
-	vector<CBitVector> m_vResA;
-	vector<CBitVector> m_vResB;
+        std::vector<CBitVector> m_vA; //Dim 1 for all pairs of sender / receiver, Dim 2 for MTs of different bitlengths as sender / receiver
+        std::vector<CBitVector> m_vB; //value B of a multiplication triple
+        std::vector<CBitVector> m_vS; // temporary value for the computation of the multiplication triples
+        std::vector<CBitVector> m_vC; // value C of a multiplication triple
+        std::vector<CBitVector> m_vD_snd; //Stores the D values (x ^ a) between an input and the multiplication value a
+        std::vector<CBitVector> m_vE_snd; //Stores the E values (y ^ b) between the other input and the multiplication value b
+        std::vector<CBitVector> m_vD_rcv;
+        std::vector<CBitVector> m_vE_rcv;
+        std::vector<CBitVector> m_vResA;
+        std::vector<CBitVector> m_vResB;
 
 	CBitVector m_vInputShareSndBuf;
 	CBitVector m_vOutputShareSndBuf;
@@ -151,7 +151,7 @@ private:
 	CBitVector m_vConvShareSndBuf;
 	CBitVector m_vConvShareRcvBuf;
 
-	vector<CBitVector> m_vConversionMasks;
+        std::vector<CBitVector> m_vConversionMasks;
 
 	CBitVector m_vConversionRandomness;
 
@@ -188,6 +188,11 @@ private:
 	 */
 	void EvaluateMTs();
 	/**
+	 * Write constant value, or 0 for CLIENT, to gs.aval nvals times and backup
+	 * initial constant.
+	 */
+	void EvaluateConstantGate(GATE* gate);
+	/**
 	 Method for evaluating Add Gate using the gate object.
 	 \param 	gate 	Gate Object.
 	 */
@@ -198,6 +203,10 @@ private:
 	 */
 	void EvaluateSUBGate(GATE* gate);
 
+	/**
+	 * Evaluate multiplication with a constant - offline like addition
+	 */
+	void EvaluateMULCONSTGate(GATE* gate);
 	/**
 	 Method for evaluating Multiplication Gate
 	 */

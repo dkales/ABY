@@ -19,29 +19,29 @@
 #ifndef __ABYSETUP_H__
 #define __ABYSETUP_H__
 
-#include "../ENCRYPTO_utils/typedefs.h"
-#include "../ENCRYPTO_utils/crypto/crypto.h"
+#include <ENCRYPTO_utils/typedefs.h>
+#include <ENCRYPTO_utils/crypto/crypto.h>
 #include "../ABY_utils/ABYconstants.h"
-#include "../ot/naor-pinkas.h"
-#include "../ot/ot-ext.h"
-#include "../ot/xormasking.h"
+#include <ot/naor-pinkas.h>
+#include <ot/ot-ext.h>
+#include <ot/xormasking.h>
 #include "../ot/arithmtmasking.h"
-#include "../ot/iknp-ot-ext-snd.h"
-#include "../ot/iknp-ot-ext-rec.h"
-#include "../ot/kk-ot-ext-snd.h"
-#include "../ot/kk-ot-ext-rec.h"
+#include <ot/iknp-ot-ext-snd.h>
+#include <ot/iknp-ot-ext-rec.h>
+#include <ot/kk-ot-ext-snd.h>
+#include <ot/kk-ot-ext-rec.h>
 #include "../DJN/djnparty.h"
 #include "../DGK/dgkparty.h"
-#include "../ENCRYPTO_utils/constants.h"
-#include "../ENCRYPTO_utils/timer.h"
-#include "../ENCRYPTO_utils/channel.h"
-#include "../ENCRYPTO_utils/sndthread.h"
-#include "../ENCRYPTO_utils/rcvthread.h"
+#include <ENCRYPTO_utils/constants.h>
+#include <ENCRYPTO_utils/timer.h>
+#include <ENCRYPTO_utils/channel.h>
+#include <ENCRYPTO_utils/sndthread.h>
+#include <ENCRYPTO_utils/rcvthread.h>
 
-typedef struct {
+struct comm_ctx {
 	SndThread *snd_std, *snd_inv;
 	RcvThread *rcv_std, *rcv_inv;
-} comm_ctx;
+};
 
 
 //#define DEBUGSETUP
@@ -166,12 +166,12 @@ private:
 	BOOL ThreadRunDGKMTGen(uint32_t threadid);
 
 	// IKNP OTTask values
-	vector<vector<IKNP_OTTask*> > m_vIKNPOTTasks;
+	std::vector<std::vector<IKNP_OTTask*> > m_vIKNPOTTasks;
 
 	// KK OTTask values
-	vector<vector<KK_OTTask*> > m_vKKOTTasks;
+	std::vector<std::vector<KK_OTTask*> > m_vKKOTTasks;
 
-	vector<PKMTGenVals*> m_vPKMTGenTasks;
+	std::vector<PKMTGenVals*> m_vPKMTGenTasks;
 	DJNParty* m_cPaillierMTGen;
 	DGKParty** m_cDGKMTGen;
 
@@ -224,7 +224,7 @@ private:
 		EJobType m_eJob;
 	};
 
-	vector<CWorkerThread*> m_vThreads;
+	std::vector<CWorkerThread*> m_vThreads;
 	CEvent m_evt;
 	CLock m_lock;
 

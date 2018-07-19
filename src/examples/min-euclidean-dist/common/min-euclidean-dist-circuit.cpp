@@ -16,13 +16,18 @@
  \brief		Implementation of Minimum Euclidean Distance Circuit
  */
 #include "min-euclidean-dist-circuit.h"
+#include "../../../abycore/circuit/booleancircuits.h"
+#include "../../../abycore/sharing/sharing.h"
+#include <ENCRYPTO_utils/crypto/crypto.h>
+#include <iostream>
+#include <vector>
 
 int32_t test_min_eucliden_dist_circuit(e_role role, char* address, uint16_t port, seclvl seclvl, uint32_t dbsize,
 		uint32_t dim, uint32_t nthreads, e_mt_gen_alg mt_alg, e_sharing dstsharing, e_sharing minsharing, ePreCompPhase pre_comp_value) {
 	uint32_t bitlen = 8, i, j, temp, tempsum, maxbitlen=32;
 	uint64_t output;
 	ABYParty* party = new ABYParty(role, address, port, seclvl, maxbitlen, nthreads, mt_alg);
-	vector<Sharing*>& sharings = party->GetSharings();
+	std::vector<Sharing*>& sharings = party->GetSharings();
 
 	/**
 		Setting the precomputation value being passed as the precomputation mode of operation.
@@ -74,7 +79,7 @@ int32_t test_min_eucliden_dist_circuit(e_role role, char* address, uint16_t port
 			temp = serverdb[i][j];
 			tempsum += (temp * temp);
 		}
-		Ssqr[i] = mincirc->PutINGate(tempsum, 2*bitlen+ceil_log2(dim), SERVER);
+		Ssqr[i] = distcirc->PutINGate(tempsum, 2*bitlen+ceil_log2(dim), SERVER);
 	}
 
 	//set client input
@@ -85,8 +90,7 @@ int32_t test_min_eucliden_dist_circuit(e_role role, char* address, uint16_t port
 		Cshr[j] = distcirc->PutINGate(2*temp, bitlen+1, CLIENT);
 		tempsum += (temp * temp);
 	}
-	Csqr = mincirc->PutINGate(tempsum, 2*bitlen+ceil_log2(dim), CLIENT);
-
+	Csqr = distcirc->PutINGate(tempsum, 2 * bitlen + ceil_log2(dim), CLIENT);
 
 	mindst = build_min_euclidean_dist_circuit(Sshr, Cshr, dbsize, dim, Ssqr, Csqr, distcirc, (BooleanCircuit*) mincirc, sharings, minsharing);
 
@@ -103,12 +107,12 @@ int32_t test_min_eucliden_dist_circuit(e_role role, char* address, uint16_t port
 		CBitVector out;
 		//out.AttachBuf(output, (uint64_t) AES_BYTES * nvals);
 
-		cout << "Testing min Euclidean distance in " << get_sharing_name(dstsharing) << " and " <<
-			get_sharing_name(minsharing) << " sharing: " << endl;
+		std::cout << "Testing min Euclidean distance in " << get_sharing_name(dstsharing) << " and " <<
+			get_sharing_name(minsharing) << " sharing: " << std::endl;
 
-		cout << "Circuit result = " << output << endl;
+		std::cout << "Circuit result = " << output << std::endl;
 		verify = verify_min_euclidean_dist(serverdb, clientquery, dbsize, dim);
-		cout << "Verification result = " << verify << endl;
+		std::cout << "Verification result = " << verify << std::endl;
 	}
 	//PrintTimings();
 
@@ -130,30 +134,32 @@ int32_t test_min_eucliden_dist_circuit(e_role role, char* address, uint16_t port
 
 //Build_
 share* build_min_euclidean_dist_circuit(share*** S, share** C, uint32_t n, uint32_t d, share** Ssqr, share* Csqr,
-		Circuit* distcirc, BooleanCircuit* mincirc, vector<Sharing*>& sharings, e_sharing minsharing) {
+		Circuit* distcirc, BooleanCircuit* mincirc, std::vector<Sharing*>& sharings, e_sharing minsharing) {
 	share **distance, *temp, *mindist;
 	uint32_t i, j;
 
-	Circuit *yaocirc = sharings[S_YAO]->GetCircuitBuildRoutine();
+	// yao circuit is needed for A2B conversion
+	BooleanCircuit * yaocirc = (BooleanCircuit*) sharings[S_YAO]->GetCircuitBuildRoutine();
 
 	distance = (share**) malloc(sizeof(share*) * n);
 	assert(mincirc->GetCircuitType() == C_BOOLEAN);
 
-	for (i=0; i < n; i++) {
+	for (i = 0; i < n; i++) {
 		distance[i] = distcirc->PutMULGate(S[i][0], C[0]);
-		for (j=1; j < d; j++) {
+		for (j = 1; j < d; j++) {
 			temp = distcirc->PutMULGate(S[i][j], C[j]);
 			distance[i] = distcirc->PutADDGate(distance[i], temp);
 		}
-		temp = mincirc->PutADDGate(Ssqr[i], Csqr);
-		if(minsharing == S_BOOL) {
-			distance[i] = ((BooleanCircuit*)yaocirc)->PutA2YGate(distance[i]);
+		temp = distcirc->PutADDGate(Ssqr[i], Csqr);
+
+		distance[i] = distcirc->PutSUBGate(temp, distance[i]);
+
+		if (minsharing == S_BOOL) {
+			distance[i] = yaocirc->PutA2YGate(distance[i]); // intermediate A2Y conversion for A2B
 			distance[i] = mincirc->PutY2BGate(distance[i]);
-		}
-		else if(minsharing == S_YAO) {
+		} else if (minsharing == S_YAO) {
 			distance[i] = mincirc->PutA2YGate(distance[i]);
 		}
-		distance[i] = mincirc->PutSUBGate(temp, distance[i]);
 	}
   
 	mindist = mincirc->PutMinGate(distance, n);

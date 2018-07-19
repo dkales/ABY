@@ -20,9 +20,9 @@
 
 #include "../../../abycore/circuit/booleancircuits.h"
 #include "../../../abycore/aby/abyparty.h"
-#include "../../../abycore/ENCRYPTO_utils/cbitvector.h"
-#include "../../../abycore/ENCRYPTO_utils/typedefs.h"
-#include "../../../abycore/ENCRYPTO_utils/graycode.h"
+#include <ENCRYPTO_utils/cbitvector.h>
+#include <ENCRYPTO_utils/typedefs.h>
+#include <ENCRYPTO_utils/graycode.h>
 #include <cassert>
 
 static const BYTE mpccseed[16] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF };
@@ -61,11 +61,11 @@ int32_t test_lowmc_circuit(e_role role, char* address, uint16_t port, uint32_t n
 int32_t test_lowmc_circuit(e_role role, char* address, uint16_t port, uint32_t nvals, uint32_t nthreads, e_mt_gen_alg mt_alg, e_sharing sharing, LowMCParams* param, uint32_t maxgates,
 		crypto* crypt, bool reduced);
 share* BuildLowMCCircuit(share* val, share* key, BooleanCircuit* circ, LowMCParams* param, uint32_t zerogate, crypto* crypt);
-void LowMCAddRoundKey(vector<uint32_t>& val, vector<uint32_t> key, uint32_t locmcstatesize, uint32_t round, BooleanCircuit* circ);
-void LowMCMultiplyState(vector<uint32_t>& state, uint32_t lowmcstatesize, BooleanCircuit* circ);
-void LowMCXORConstants(vector<uint32_t>& state, uint32_t lowmcstatesize, BooleanCircuit* circ);
-void LowMCXORMultipliedKey(vector<uint32_t>& state, vector<uint32_t> key, uint32_t lowmcstatesize, uint32_t round, BooleanCircuit* circ);
-void LowMCPutSBoxLayer(vector<uint32_t>& input, uint32_t numsboxes, BooleanCircuit* circ);
+void LowMCAddRoundKey(std::vector<uint32_t>& val, std::vector<uint32_t> key, uint32_t locmcstatesize, uint32_t round, BooleanCircuit* circ);
+void LowMCMultiplyState(std::vector<uint32_t>& state, uint32_t lowmcstatesize, BooleanCircuit* circ);
+void LowMCXORConstants(std::vector<uint32_t>& state, uint32_t lowmcstatesize, BooleanCircuit* circ);
+void LowMCXORMultipliedKey(std::vector<uint32_t>& state, std::vector<uint32_t> key, uint32_t lowmcstatesize, uint32_t round, BooleanCircuit* circ);
+void LowMCPutSBoxLayer(std::vector<uint32_t>& input, uint32_t numsboxes, BooleanCircuit* circ);
 void LowMCPutSBox(uint32_t& o1, uint32_t& o2, uint32_t& o3, BooleanCircuit* circ);
 
 /* LowMC Variant with reduced Key-Schedule */
@@ -75,6 +75,6 @@ vector<uint32_t> LowMCCalculateRho(const vector<uint32_t>& key, uint32_t keysize
 void LowMCAddRho(vector<uint32_t>& val, const vector<uint32_t>& rho, uint32_t nsboxes, uint32_t round, uint32_t nvals, BooleanCircuit* circ);
 vector<uint32_t> FourRussiansCalculateRho(const vector<uint32_t>& key, uint32_t keysize, uint32_t nsboxes, uint32_t nrounds, BooleanCircuit* circ);
 
-void FourRussiansMatrixMult(vector<uint32_t>& state, uint32_t lowmcstatesize, BooleanCircuit* circ);
+void FourRussiansMatrixMult(std::vector<uint32_t>& state, uint32_t lowmcstatesize, BooleanCircuit* circ);
 
 #endif /* __LOWMCCIRCUIT_H_ */

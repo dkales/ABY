@@ -18,6 +18,9 @@
  *              Implements the functionality from PST’15 (http://ieeexplore.ieee.org/document/7232947/).
  */
 #include "threshold-euclidean-dist.h"
+#include "../../../abycore/circuit/booleancircuits.h"
+#include "../../../abycore/sharing/sharing.h"
+#include <ENCRYPTO_utils/crypto/crypto.h>
 
 int32_t test_min_eucliden_dist_circuit(e_role role, char* address, uint16_t port, seclvl seclvl, uint32_t pointbitlen,
         uint32_t thresbitlen, uint32_t nthreads, e_mt_gen_alg mt_alg, e_sharing dstsharing, e_sharing minsharing, uint32_t n,
@@ -25,7 +28,7 @@ int32_t test_min_eucliden_dist_circuit(e_role role, char* address, uint16_t port
 
     uint64_t * output;
     ABYParty* party = new ABYParty(role, address, port, seclvl, pointbitlen, nthreads, mt_alg);
-    vector<Sharing*>& sharings = party->GetSharings();
+    std::vector<Sharing*>& sharings = party->GetSharings();
 
     crypto* crypt = new crypto(seclvl.symbits, (uint8_t*) const_seed);
 
@@ -119,10 +122,10 @@ void verify_min_euclidean_dist(uint64_t* x1, uint64_t* x2, uint64_t* y1,
         d = d > t ? 1 : 0;
         if (d != res[i]) {
             c++;
-            cout <<"I#" << i << " x1:" << x1[i] << " x2:" << x2[i] << " y1:" << y1[i] <<
-                " y2:" << y2[i] << endl;
-            cout << "Expected " << d << ", but got " << res[i] << endl;
+            std::cout <<"I#" << i << " x1:" << x1[i] << " x2:" << x2[i] << " y1:" << y1[i] <<
+                " y2:" << y2[i] << std::endl;
+            std::cout << "Expected " << d << ", but got " << res[i] << std::endl;
         }
     }
-    cout << c << " wrong results" << endl;
+    std::cout << c << " wrong results" << std::endl;
 }

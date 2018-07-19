@@ -20,6 +20,11 @@
 #define SHARE_H_
 
 #include "circuit.h"
+#include "../ABY_utils/ABYconstants.h"
+#include <cassert>
+#include <cstdint>
+#include <vector>
+
 
 /** Share Class */
 class share {
@@ -27,7 +32,7 @@ public:
 	/** Constructor overloaded with shared length and circuit.*/
 	share(uint32_t sharelen, Circuit* circ);
 	/** Constructor overloaded with gates and circuit.*/
-	share(vector<uint32_t> gates, Circuit* circ);
+	share(std::vector<uint32_t> gates, Circuit* circ);
 	/**
 	 Initialise Function
 	 \param circ 		Ciruit object.
@@ -40,7 +45,7 @@ public:
 	}
 	;
 
-	vector<uint32_t> get_wires() {
+        std::vector<uint32_t> get_wires() {
 		return m_ngateids;
 	}
 	;
@@ -50,38 +55,24 @@ public:
 
 	void set_wire_id(uint32_t posid, uint32_t wireid);
 
-	void set_wire_ids(vector<uint32_t> wires) {
-		m_ngateids = wires;
-	}
-	;
-	uint32_t get_bitlength() {
-		return m_ngateids.size();
-	}
-	;
-	void set_bitlength(uint32_t sharelen) {
-		m_ngateids.resize(sharelen);
-	}
-	;
-	uint32_t get_max_bitlength() {
-		return m_nmaxbitlen;
-	}
-	;
-	void set_max_bitlength(uint32_t max_bitlength) {
-		assert(max_bitlength >= m_ngateids.size());
-		m_nmaxbitlen = max_bitlength;
-	}
-	;
-	uint32_t get_nvals_on_wire(uint32_t wireid) {
-		return m_ccirc->GetNumVals(m_ngateids[wireid]);
-	};
-	e_circuit get_circuit_type() {
-		return m_ccirc->GetCircuitType();
-	}
-	;
-	e_sharing get_share_type() {
-		return m_ccirc->GetContext();
-	}
-	;
+	void set_wire_ids(std::vector<uint32_t> wires);
+
+	uint32_t get_bitlength();
+
+	void set_bitlength(uint32_t sharelen);
+
+	uint32_t get_max_bitlength();
+
+	void set_max_bitlength(uint32_t max_bitlength);
+
+	uint32_t get_nvals();
+
+	uint32_t get_nvals_on_wire(uint32_t wireid);
+
+	e_circuit get_circuit_type();
+
+	e_sharing get_share_type();
+
 
 	template<class T> T get_clear_value() {
 
@@ -91,9 +82,11 @@ public:
 #endif
 
 		assert(sizeof(T) * 8 >= m_ngateids.size());
-		T val = 0;
+		T val = 0, tmpval = 0;
+
 		for (uint32_t i = 0; i < m_ngateids.size(); i++) {
-			val += (*m_ccirc->GetOutputGateValue(m_ngateids[i]) << i);
+			m_ccirc->GetOutputGateValueT(m_ngateids[i], tmpval);
+			val += (tmpval << i);
 		}
 
 		return val;
@@ -104,7 +97,7 @@ public:
 	virtual void get_clear_value_vec(uint64_t** vec, uint32_t *bitlen, uint32_t *nvals) = 0;
 
 protected:
-	vector<uint32_t> m_ngateids;
+        std::vector<uint32_t> m_ngateids;
 	Circuit* m_ccirc;
 	uint32_t m_nmaxbitlen;
 };
@@ -119,7 +112,7 @@ public:
 	}
 	;
 	/** Constructor overloaded with gates and circuit.*/
-	boolshare(vector<uint32_t> gates, Circuit* circ) :
+	boolshare(std::vector<uint32_t> gates, Circuit* circ) :
 			share(gates, circ) {
 	}
 	;
@@ -163,7 +156,7 @@ public:
 	}
 	;
 	/** Constructor overloaded with gates and circuit.*/
-	arithshare(vector<uint32_t> gates, Circuit* circ) :
+	arithshare(std::vector<uint32_t> gates, Circuit* circ) :
 			share(gates, circ) {
 	}
 	;

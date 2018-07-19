@@ -17,7 +17,8 @@
  */
 
 #include "common/lowmccircuit.h"
-#include "../../abycore/ENCRYPTO_utils/parse_options.h"
+#include <ENCRYPTO_utils/parse_options.h>
+#include <ENCRYPTO_utils/crypto/crypto.h>
 #include "../../abycore/aby/abyparty.h"
 
 int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, uint32_t* nvals, uint32_t* secparam, string* address, uint16_t* port, uint32_t* statesize, uint32_t* keysize,
@@ -36,7 +37,7 @@ int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, uint32_t*
 
 	if (!parse_options(argcp, argvp, options, sizeof(options) / sizeof(parsing_ctx))) {
 		print_usage(*argvp[0], options, sizeof(options) / sizeof(parsing_ctx));
-		cout << "Exiting" << endl;
+		std::cout << "Exiting" << std::endl;
 		exit(0);
 	}
 
@@ -58,7 +59,7 @@ int main(int argc, char** argv) {
 	uint32_t bitlen = 32, nvals = 65, secparam = 128, nthreads = 1, statesize, sboxes, rounds, keysize, maxnumgates=0;
     bool reduced = false;
 	uint16_t port = 7766;
-	string address = "127.0.0.1";
+	std::string address = "127.0.0.1";
 	int32_t test_op = -1;
 	e_mt_gen_alg mt_alg = MT_OT;
 
