@@ -21,7 +21,7 @@
 #include "../../abycore/aby/abyparty.h"
 
 int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, uint32_t* nvals, uint32_t* secparam, string* address, uint16_t* port, uint32_t* statesize, uint32_t* keysize,
-		uint32_t* sboxes, uint32_t* rounds, uint32_t* maxnumgates) {
+		uint32_t* sboxes, uint32_t* rounds, uint32_t* maxnumgates, bool* reduced) {
 
 	uint32_t int_role = 0, int_port = 0;
 	bool useffc = false;
@@ -30,7 +30,8 @@ int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, uint32_t*
 			(void*) secparam, T_NUM, "s", "Symmetric Security Bits, default: 128", false, false }, { (void*) address, T_STR, "a", "IP-address, default: localhost", false, false },
 			{ (void*) &int_port, T_NUM, "p", "Port, default: 7766", false, false }, { (void*) statesize, T_NUM, "t", "Statesize in bits", true, false }, { (void*) keysize, T_NUM,
 					"k", "Keylength in bits", true, false }, { (void*) sboxes, T_NUM, "m", "#SBoxes per rounds", true, false },
-			{ (void*) rounds, T_NUM, "o", "#Rounds", true, false }, { (void*) maxnumgates, T_NUM, "g", "Maximum number of gates in the circuit", false, false }
+			{ (void*) rounds, T_NUM, "o", "#Rounds", true, false }, { (void*) maxnumgates, T_NUM, "g", "Maximum number of gates in the circuit", false, false },
+			{ (void*) reduced, T_FLAG, "l", "Enable reduced Linear-Layer optimizations, dont transmit expanded key", false, false },
 	};
 
 	if (!parse_options(argcp, argvp, options, sizeof(options) / sizeof(parsing_ctx))) {
@@ -55,16 +56,17 @@ int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, uint32_t*
 int main(int argc, char** argv) {
 	e_role role;
 	uint32_t bitlen = 32, nvals = 65, secparam = 128, nthreads = 1, statesize, sboxes, rounds, keysize, maxnumgates=0;
+    bool reduced = false;
 	uint16_t port = 7766;
 	string address = "127.0.0.1";
 	int32_t test_op = -1;
 	e_mt_gen_alg mt_alg = MT_OT;
 
-	read_test_options(&argc, &argv, &role, &nvals, &secparam, &address, &port, &statesize, &keysize, &sboxes, &rounds, &maxnumgates);
+	read_test_options(&argc, &argv, &role, &nvals, &secparam, &address, &port, &statesize, &keysize, &sboxes, &rounds, &maxnumgates, &reduced);
 
 	crypto* crypt = new crypto(secparam, (uint8_t*) const_seed);
 
-	test_lowmc_circuit(role, (char*) address.c_str(), port, nvals, nthreads, mt_alg, S_BOOL, statesize, keysize, sboxes, rounds, maxnumgates, crypt);
+	test_lowmc_circuit(role, (char*) address.c_str(), port, nvals, nthreads, mt_alg, S_BOOL, statesize, keysize, sboxes, rounds, maxnumgates, crypt, reduced);
 
 	return 0;
 }
