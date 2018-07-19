@@ -21,7 +21,7 @@
 #include <ENCRYPTO_utils/crypto/crypto.h>
 #include "../../abycore/aby/abyparty.h"
 
-int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, uint32_t* nvals, uint32_t* secparam, string* address, uint16_t* port, uint32_t* statesize, uint32_t* keysize,
+int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, uint32_t* nvals, uint32_t* secparam, std::string* address, uint16_t* port, uint32_t* statesize, uint32_t* keysize,
 		uint32_t* sboxes, uint32_t* rounds, uint32_t* maxnumgates, bool* reduced) {
 
 	uint32_t int_role = 0, int_port = 0;

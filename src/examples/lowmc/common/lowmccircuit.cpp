@@ -82,9 +82,9 @@ int32_t test_lowmc_circuit(e_role role, char* address, uint16_t port, uint32_t n
 	CBitVector out;
 	out.AttachBuf(output, (uint64_t) ceil_divide(param->blocksize, 8) * nvals);
 
-    std::cout << party->GetTiming(P_SETUP) << "\t" << party->GetTiming(P_ONLINE) << "\t" << party->GetTiming(P_TOTAL) << endl;
-    std::cout << party->GetReceivedData(P_TOTAL) << "\t" << party->GetSentData(P_TOTAL) << endl;
-    std::cout << ((BooleanCircuit*)circ)->GetNumANDGates() << endl;
+    std::cout << party->GetTiming(P_SETUP) << "\t" << party->GetTiming(P_ONLINE) << "\t" << party->GetTiming(P_TOTAL) << std::endl;
+    std::cout << party->GetReceivedData(P_TOTAL) << "\t" << party->GetSentData(P_TOTAL) << std::endl;
+    std::cout << ((BooleanCircuit*)circ)->GetNumANDGates() << std::endl;
 
 	return 1;
 }
@@ -253,7 +253,7 @@ share* BuildLowMCCircuitReduced(share* val, share* key, BooleanCircuit* circ, Lo
 	uint32_t nrounds = param->nrounds;
 	uint32_t keysize = param->keysize;
 
-	vector<uint32_t> state(statesize);
+	std::vector<uint32_t> state(statesize);
 	/* create linlayer (statesize*statesize*nrounds), consts (statesize*nrounds), CN matrix = 3*m*r*k), K0+P matrix(keysize*statesize) */
 	m_vRandomBits.Create(statesize * statesize * nrounds + nrounds * statesize + 3*nsboxes*nrounds*keysize + keysize*statesize, crypt);
 	m_nZeroGate = zerogate;
@@ -266,7 +266,7 @@ share* BuildLowMCCircuitReduced(share* val, share* key, BooleanCircuit* circ, Lo
 	for (i = 0; i < statesize; i++)
 		state[i] = val->get_wire_id(i);
 
-	vector<uint32_t> rho = FourRussiansCalculateRho(key->get_wires(), keysize, nsboxes, nrounds, circ);
+	std::vector<uint32_t> rho = FourRussiansCalculateRho(key->get_wires(), keysize, nsboxes, nrounds, circ);
 
 	LowMCAddRoundKey0(state, key->get_wires(), statesize, keysize, nvals, circ); //Add (K0+P)*k to state
 	for (round = 0; round < nrounds; round++) {
@@ -290,12 +290,12 @@ share* BuildLowMCCircuitReduced(share* val, share* key, BooleanCircuit* circ, Lo
 	destroy_code(m_tGrayCode);
 
 #ifdef PRINT_PERFORMANCE_STATS
-	cout << "Total Number of Boolean Gates: " << circ->GetNumGates() << endl;
+	std::cout << "Total Number of Boolean Gates: " << circ->GetNumGates() << std::endl;
 #endif
 
 	return new boolshare(state, circ);
 }
-void LowMCAddRoundKey0(vector<uint32_t>& state, const vector<uint32_t>& key, uint32_t lowmcstatesize, uint32_t keysize, uint32_t nvals, BooleanCircuit* circ) {
+void LowMCAddRoundKey0(std::vector<uint32_t>& state, const std::vector<uint32_t>& key, uint32_t lowmcstatesize, uint32_t keysize, uint32_t nvals, BooleanCircuit* circ) {
 //	uint32_t tmp;
 //	for(uint32_t i = 0; i < lowmcstatesize; i++) {
 //		tmp = 0;
@@ -316,9 +316,9 @@ void LowMCAddRoundKey0(vector<uint32_t>& state, const vector<uint32_t>& key, uin
 	code* GrayCode = build_code(wsize);
 	lut[0] = m_nZeroGate;	//circ->PutConstantGate(0, 1);
 
-	vector<uint32_t> tmpstate(ceil_divide(lowmcstatesize, wsize) * wsize, lut[0]);
+	std::vector<uint32_t> tmpstate(ceil_divide(lowmcstatesize, wsize) * wsize, lut[0]);
 	//pad the state to a multiple of the window size and fill with zeros
-	vector<uint32_t> key_pad(ceil_divide(keysize, wsize) * wsize, lut[0]);
+	std::vector<uint32_t> key_pad(ceil_divide(keysize, wsize) * wsize, lut[0]);
 	for (i = 0; i < keysize; i++)
 		key_pad[i] = key[i];
 
@@ -339,14 +339,14 @@ void LowMCAddRoundKey0(vector<uint32_t>& state, const vector<uint32_t>& key, uin
 		state[i] = tmpstate[i];
 }
 
-void LowMCAddRho(vector<uint32_t>& state, const vector<uint32_t>& rho,  uint32_t nsboxes, uint32_t round, uint32_t nvals, BooleanCircuit* circ) {
+void LowMCAddRho(std::vector<uint32_t>& state, const std::vector<uint32_t>& rho,  uint32_t nsboxes, uint32_t round, uint32_t nvals, BooleanCircuit* circ) {
 	for(uint32_t i = 0; i < 3*nsboxes; i++) {
 		state[i] = circ->PutXORGate(state[i], rho[round*3*nsboxes +i]); //circ->PutRepeaterGate(nvals, rho[round*3*nsboxes + i]));
 	}
 }
 
-vector<uint32_t> LowMCCalculateRho(const vector<uint32_t>& key, uint32_t keysize, uint32_t nsboxes, uint32_t nrounds, BooleanCircuit* circ) {
-	vector<uint32_t> rho(3*nsboxes*nrounds);
+std::vector<uint32_t> LowMCCalculateRho(const std::vector<uint32_t>& key, uint32_t keysize, uint32_t nsboxes, uint32_t nrounds, BooleanCircuit* circ) {
+	std::vector<uint32_t> rho(3*nsboxes*nrounds);
 	uint32_t tmp;
 	for(uint32_t i = 0; i < 3*nsboxes*nrounds; i++) {
 		tmp = 0;
@@ -360,7 +360,7 @@ vector<uint32_t> LowMCCalculateRho(const vector<uint32_t>& key, uint32_t keysize
 	return rho;
 }
 
-vector<uint32_t> FourRussiansCalculateRho(const vector<uint32_t>& key, uint32_t keysize, uint32_t nsboxes, uint32_t nrounds, BooleanCircuit* circ) {
+std::vector<uint32_t> FourRussiansCalculateRho(const std::vector<uint32_t>& key, uint32_t keysize, uint32_t nsboxes, uint32_t nrounds, BooleanCircuit* circ) {
 	//round to nearest square for optimal window size
 	uint32_t rho_size = 3*nsboxes*nrounds;
 	uint32_t wsize = floor_log2(rho_size) - 2;
@@ -372,9 +372,9 @@ vector<uint32_t> FourRussiansCalculateRho(const vector<uint32_t>& key, uint32_t 
 	code* rhoGrayCode = build_code(wsize);
 	lut[0] = m_nZeroGate;	//circ->PutConstantGate(0, 1);
 
-	vector<uint32_t> rho(ceil_divide(rho_size, wsize) * wsize, lut[0]);
+	std::vector<uint32_t> rho(ceil_divide(rho_size, wsize) * wsize, lut[0]);
 	//pad the state to a multiple of the window size and fill with zeros
-	vector<uint32_t> key_pad(ceil_divide(keysize, wsize) * wsize, lut[0]);
+	std::vector<uint32_t> key_pad(ceil_divide(keysize, wsize) * wsize, lut[0]);
 	for (i = 0; i < keysize; i++)
 		key_pad[i] = key[i];
 
