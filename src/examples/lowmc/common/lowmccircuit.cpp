@@ -59,7 +59,7 @@ int32_t test_lowmc_circuit(e_role role, char* address, uint16_t port, uint32_t n
 		key.Create(param->keysize, crypt);
         s_key = circ->PutINGate(key.GetArr(), param->keysize, SERVER);
         //Dont repeat here, repeat after multiplications
-		s_key = circ->PutRepeaterGate(nvals, s_key);
+//		s_key = circ->PutRepeaterGate(nvals, s_key);
 	} else {
 		key.Create(exp_key_bitlen, crypt);
 		s_key = circ->PutINGate(key.GetArr(), exp_key_bitlen, SERVER);
@@ -289,10 +289,6 @@ share* BuildLowMCCircuitReduced(share* val, share* key, BooleanCircuit* circ, Lo
 
 	destroy_code(m_tGrayCode);
 
-#ifdef PRINT_PERFORMANCE_STATS
-	std::cout << "Total Number of Boolean Gates: " << circ->GetNumGates() << std::endl;
-#endif
-
 	return new boolshare(state, circ);
 }
 void LowMCAddRoundKey0(std::vector<uint32_t>& state, const std::vector<uint32_t>& key, uint32_t lowmcstatesize, uint32_t keysize, uint32_t nvals, BooleanCircuit* circ) {
@@ -336,12 +332,13 @@ void LowMCAddRoundKey0(std::vector<uint32_t>& state, const std::vector<uint32_t>
 	destroy_code(GrayCode);
 	free(lut);
 	for (i = 0; i < lowmcstatesize; i++)
-		state[i] = tmpstate[i];
+		state[i] = circ->PutXORGate(state[i], circ->PutRepeaterGate(nvals, tmpstate[i]));
 }
 
 void LowMCAddRho(std::vector<uint32_t>& state, const std::vector<uint32_t>& rho,  uint32_t nsboxes, uint32_t round, uint32_t nvals, BooleanCircuit* circ) {
 	for(uint32_t i = 0; i < 3*nsboxes; i++) {
-		state[i] = circ->PutXORGate(state[i], rho[round*3*nsboxes +i]); //circ->PutRepeaterGate(nvals, rho[round*3*nsboxes + i]));
+		state[i] = circ->PutXORGate(state[i], circ->PutRepeaterGate(nvals, rho[round*3*nsboxes + i]));
+//		state[i] = circ->PutXORGate(state[i], rho[round*3*nsboxes +i]); //circ->PutRepeaterGate(nvals, rho[round*3*nsboxes + i]));
 	}
 }
 
